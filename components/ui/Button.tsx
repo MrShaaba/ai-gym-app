@@ -4,9 +4,11 @@ import {
   Text,
   StyleSheet,
   ActivityIndicator,
+  View,
   ViewStyle,
   TextStyle,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, fontSize, borderRadius } from '@/config/theme';
 
 type ButtonVariant = 'primary' | 'secondary' | 'outline';
@@ -17,6 +19,7 @@ interface ButtonProps {
   variant?: ButtonVariant;
   disabled?: boolean;
   loading?: boolean;
+  icon?: React.ComponentProps<typeof Ionicons>['name'];
   style?: ViewStyle;
   textStyle?: TextStyle;
 }
@@ -27,6 +30,7 @@ export function Button({
   variant = 'primary',
   disabled = false,
   loading = false,
+  icon,
   style,
   textStyle,
 }: ButtonProps) {
@@ -47,9 +51,19 @@ export function Button({
       {loading ? (
         <ActivityIndicator color={variant === 'outline' ? colors.accent : colors.background} />
       ) : (
-        <Text style={[styles.text, styles[`${variant}Text`], textStyle]}>
-          {title}
-        </Text>
+        <View style={styles.inner}>
+          {icon && (
+            <Ionicons
+              name={icon}
+              size={18}
+              color={variant === 'primary' ? colors.background : colors.textPrimary}
+              style={styles.icon}
+            />
+          )}
+          <Text style={[styles.text, styles[`${variant}Text`], textStyle]}>
+            {title}
+          </Text>
+        </View>
       )}
     </TouchableOpacity>
   );
@@ -63,6 +77,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 48,
+  },
+  inner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  icon: {
+    marginRight: spacing.sm,
   },
   primary: {
     backgroundColor: colors.accent,

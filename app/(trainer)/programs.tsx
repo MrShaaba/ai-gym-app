@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '@/components/ui/Screen';
 import { Card } from '@/components/ui/Card';
@@ -6,9 +6,9 @@ import { Button } from '@/components/ui/Button';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
 
 const mockPrograms = [
-  { id: '1', name: 'Fat Loss Fundamentals', clients: 4, weeks: 8, difficulty: 'Beginner' },
-  { id: '2', name: 'Hypertrophy Pro', clients: 3, weeks: 12, difficulty: 'Intermediate' },
-  { id: '3', name: 'Competition Prep', clients: 1, weeks: 16, difficulty: 'Advanced' },
+  { id: '1', name: 'Fat Loss Fundamentals', clients: 4, weeks: 8, difficulty: 'Beginner', muscles: 'Full Body, Cardio' },
+  { id: '2', name: 'Hypertrophy Pro', clients: 3, weeks: 12, difficulty: 'Intermediate', muscles: 'Chest, Back, Legs, Arms' },
+  { id: '3', name: 'Competition Prep', clients: 1, weeks: 16, difficulty: 'Advanced', muscles: 'Squat, Bench, Deadlift' },
 ];
 
 const difficultyColor: Record<string, string> = {
@@ -21,12 +21,8 @@ export default function TrainerPrograms() {
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Programs</Text>
-          <TouchableOpacity style={styles.addBtn}>
-            <Ionicons name="add" size={22} color={colors.accent} />
-          </TouchableOpacity>
-        </View>
+        <Text style={styles.title}>Programs</Text>
+        <Text style={styles.subtitle}>{mockPrograms.length} programs created</Text>
 
         {mockPrograms.map((p) => (
           <Card key={p.id} style={styles.card}>
@@ -38,13 +34,14 @@ export default function TrainerPrograms() {
                 </Text>
               </View>
             </View>
+            <Text style={styles.muscles}>{p.muscles}</Text>
             <Text style={styles.meta}>
-              {p.weeks} weeks · {p.clients} client{p.clients !== 1 ? 's' : ''} assigned
+              {p.weeks} weeks  ·  {p.clients} client{p.clients !== 1 ? 's' : ''} assigned
             </Text>
           </Card>
         ))}
 
-        <Button title="Create New Program" onPress={() => {}} style={styles.createBtn} />
+        <Button title="Create New Program" icon="add-outline" onPress={() => {}} style={styles.createBtn} />
       </ScrollView>
     </Screen>
   );
@@ -55,24 +52,16 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     paddingBottom: spacing.xxl,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.lg,
-  },
   title: {
     color: colors.textPrimary,
-    fontSize: fontSize.xl,
+    fontSize: fontSize.xxl,
     fontWeight: '700',
   },
-  addBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.accent + '20',
-    alignItems: 'center',
-    justifyContent: 'center',
+  subtitle: {
+    color: colors.textSecondary,
+    fontSize: fontSize.sm,
+    marginTop: spacing.xs,
+    marginBottom: spacing.lg,
   },
   card: {
     marginBottom: spacing.md,
@@ -88,6 +77,7 @@ const styles = StyleSheet.create({
     fontSize: fontSize.lg,
     fontWeight: '600',
     flex: 1,
+    marginRight: spacing.sm,
   },
   badge: {
     paddingHorizontal: spacing.md,
@@ -97,6 +87,14 @@ const styles = StyleSheet.create({
   badgeText: {
     fontSize: fontSize.xs,
     fontWeight: '700',
+  },
+  muscles: {
+    color: colors.accent,
+    fontSize: fontSize.xs,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: spacing.xs,
   },
   meta: {
     color: colors.textMuted,

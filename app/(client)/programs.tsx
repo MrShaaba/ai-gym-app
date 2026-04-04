@@ -6,9 +6,10 @@ import { Button } from '@/components/ui/Button';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
 
 const mockPrograms = [
-  { id: '1', name: 'Beginner Strength', weeks: 8, difficulty: 'Beginner', days: 3 },
-  { id: '2', name: 'Hypertrophy Split', weeks: 12, difficulty: 'Intermediate', days: 5 },
-  { id: '3', name: 'Powerlifting Peak', weeks: 6, difficulty: 'Advanced', days: 4 },
+  { id: '1', name: 'Beginner Strength', weeks: 8, difficulty: 'Beginner', days: 3, muscles: 'Full Body', progress: 0.75 },
+  { id: '2', name: 'Hypertrophy Split', weeks: 12, difficulty: 'Intermediate', days: 5, muscles: 'Chest, Back, Legs, Shoulders, Arms', progress: 0.3 },
+  { id: '3', name: 'Powerlifting Peak', weeks: 6, difficulty: 'Advanced', days: 4, muscles: 'Squat, Bench, Deadlift', progress: 0 },
+  { id: '4', name: 'Athletic Performance', weeks: 10, difficulty: 'Intermediate', days: 4, muscles: 'Legs, Core, Plyometrics', progress: 0.1 },
 ];
 
 const difficultyColor: Record<string, string> = {
@@ -22,14 +23,16 @@ export default function Programs() {
     <Screen>
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.title}>Programs</Text>
+        <Text style={styles.subtitle}>{mockPrograms.length} programs available</Text>
 
         {mockPrograms.map((p) => (
           <Card key={p.id} style={styles.card}>
             <View style={styles.row}>
               <View style={styles.info}>
                 <Text style={styles.name}>{p.name}</Text>
+                <Text style={styles.muscles}>{p.muscles}</Text>
                 <Text style={styles.meta}>
-                  {p.weeks} weeks · {p.days} days/week
+                  {p.weeks} weeks  ·  {p.days} days/week
                 </Text>
               </View>
               <View style={[styles.badge, { backgroundColor: difficultyColor[p.difficulty] + '20' }]}>
@@ -38,11 +41,20 @@ export default function Programs() {
                 </Text>
               </View>
             </View>
+            {p.progress > 0 && (
+              <View style={styles.progressRow}>
+                <View style={styles.progressTrack}>
+                  <View style={[styles.progressFill, { width: `${p.progress * 100}%` }]} />
+                </View>
+                <Text style={styles.progressLabel}>{Math.round(p.progress * 100)}%</Text>
+              </View>
+            )}
           </Card>
         ))}
 
         <Button
           title="AI Program Builder"
+          icon="sparkles-outline"
           variant="outline"
           onPress={() => {}}
           style={styles.aiBtn}
@@ -59,8 +71,13 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.textPrimary,
-    fontSize: fontSize.xl,
+    fontSize: fontSize.xxl,
     fontWeight: '700',
+  },
+  subtitle: {
+    color: colors.textSecondary,
+    fontSize: fontSize.sm,
+    marginTop: spacing.xs,
     marginBottom: spacing.lg,
   },
   card: {
@@ -69,15 +86,24 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
   info: {
     flex: 1,
+    marginRight: spacing.md,
   },
   name: {
     color: colors.textPrimary,
     fontSize: fontSize.lg,
     fontWeight: '600',
+  },
+  muscles: {
+    color: colors.accent,
+    fontSize: fontSize.xs,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginTop: spacing.xs,
   },
   meta: {
     color: colors.textMuted,
@@ -92,6 +118,31 @@ const styles = StyleSheet.create({
   badgeText: {
     fontSize: fontSize.xs,
     fontWeight: '700',
+  },
+  progressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: spacing.md,
+    gap: spacing.sm,
+  },
+  progressTrack: {
+    flex: 1,
+    height: 4,
+    backgroundColor: colors.border,
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: colors.accent,
+    borderRadius: 2,
+  },
+  progressLabel: {
+    color: colors.textMuted,
+    fontSize: fontSize.xs,
+    fontWeight: '600',
+    width: 32,
+    textAlign: 'right',
   },
   aiBtn: {
     marginTop: spacing.md,

@@ -5,10 +5,10 @@ import { Card } from '@/components/ui/Card';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
 
 const mockClients = [
-  { id: '1', name: 'Sarah Mitchell', goal: 'Weight Loss', workouts: 18, active: true },
-  { id: '2', name: 'James Kim', goal: 'Muscle Gain', workouts: 24, active: true },
-  { id: '3', name: 'Lisa Torres', goal: 'General Fitness', workouts: 12, active: true },
-  { id: '4', name: 'Mark Davis', goal: 'Powerlifting', workouts: 31, active: false },
+  { id: '1', name: 'Sarah Mitchell', goal: 'Weight Loss', workouts: 18, active: true, lastActive: '2h ago' },
+  { id: '2', name: 'James Kim', goal: 'Muscle Gain', workouts: 24, active: true, lastActive: '5h ago' },
+  { id: '3', name: 'Lisa Torres', goal: 'General Fitness', workouts: 12, active: true, lastActive: '1d ago' },
+  { id: '4', name: 'Mark Davis', goal: 'Powerlifting', workouts: 31, active: false, lastActive: '14d ago' },
 ];
 
 export default function Clients() {
@@ -19,6 +19,7 @@ export default function Clients() {
     <Screen>
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.title}>Clients</Text>
+        <Text style={styles.subtitle}>{mockClients.length} total</Text>
 
         <Text style={styles.sectionTitle}>Active ({active.length})</Text>
         {active.map((client) => (
@@ -30,6 +31,7 @@ export default function Clients() {
               <View style={styles.info}>
                 <Text style={styles.clientName}>{client.name}</Text>
                 <Text style={styles.clientGoal}>{client.goal}</Text>
+                <Text style={styles.lastActive}>Active {client.lastActive}</Text>
               </View>
               <View style={styles.workoutBadge}>
                 <Text style={styles.workoutCount}>{client.workouts}</Text>
@@ -51,6 +53,7 @@ export default function Clients() {
                   <View style={styles.info}>
                     <Text style={styles.clientName}>{client.name}</Text>
                     <Text style={styles.clientGoal}>{client.goal}</Text>
+                    <Text style={styles.lastActive}>Last seen {client.lastActive}</Text>
                   </View>
                 </View>
               </Card>
@@ -69,8 +72,13 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.textPrimary,
-    fontSize: fontSize.xl,
+    fontSize: fontSize.xxl,
     fontWeight: '700',
+  },
+  subtitle: {
+    color: colors.textSecondary,
+    fontSize: fontSize.sm,
+    marginTop: spacing.xs,
     marginBottom: spacing.lg,
   },
   sectionTitle: {
@@ -119,6 +127,11 @@ const styles = StyleSheet.create({
   clientGoal: {
     color: colors.textMuted,
     fontSize: fontSize.sm,
+    marginTop: 2,
+  },
+  lastActive: {
+    color: colors.textMuted,
+    fontSize: fontSize.xs,
     marginTop: 2,
   },
   workoutBadge: {

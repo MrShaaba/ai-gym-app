@@ -12,13 +12,18 @@ export default function Login() {
   return (
     <Screen style={styles.screen}>
       <View style={styles.header}>
+        <View style={styles.logoCircle}>
+          <Ionicons name="barbell" size={32} color={colors.accent} />
+        </View>
+        <Text style={styles.brand}>AI Gym</Text>
         <Text style={styles.title}>Welcome Back</Text>
         <Text style={styles.subtitle}>Sign in to continue your training</Text>
       </View>
 
       <View style={styles.form}>
         <Input label="Email" placeholder="you@example.com" keyboardType="email-address" autoCapitalize="none" />
-        <Input label="Password" placeholder="••••••••" secureTextEntry />
+        <Input label="Password" placeholder="Enter your password" secureTextEntry />
+        <Text style={styles.forgot}>Forgot Password?</Text>
         <Button title="Sign In" onPress={() => router.push('/(auth)/otp-verify')} />
       </View>
 
@@ -30,14 +35,16 @@ export default function Login() {
 
       <View style={styles.social}>
         <Button
-          title="  Google"
+          title="Google"
           variant="outline"
+          icon="logo-google"
           onPress={() => router.push('/(auth)/otp-verify')}
           style={styles.socialBtn}
         />
         <Button
-          title="  Apple"
+          title="Apple"
           variant="outline"
+          icon="logo-apple"
           onPress={() => router.push('/(auth)/otp-verify')}
           style={styles.socialBtn}
         />
@@ -59,7 +66,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   header: {
+    alignItems: 'center',
     marginBottom: spacing.xl,
+  },
+  logoCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: colors.accent + '15',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+  },
+  brand: {
+    color: colors.accent,
+    fontSize: fontSize.sm,
+    fontWeight: '700',
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+    marginBottom: spacing.lg,
   },
   title: {
     color: colors.textPrimary,
@@ -73,6 +98,12 @@ const styles = StyleSheet.create({
   },
   form: {
     gap: spacing.md,
+  },
+  forgot: {
+    color: colors.accent,
+    fontSize: fontSize.sm,
+    fontWeight: '600',
+    textAlign: 'right',
   },
   divider: {
     flexDirection: 'row',

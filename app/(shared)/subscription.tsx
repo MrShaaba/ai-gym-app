@@ -1,4 +1,5 @@
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { useState } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '@/components/ui/Screen';
@@ -9,23 +10,23 @@ import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
 const plans = [
   {
     name: 'Free',
-    price: '$0',
-    period: '/month',
+    monthly: '$0',
+    annual: '$0',
     features: ['3 workouts/week', 'Basic tracking', 'Community access'],
     current: true,
   },
   {
     name: 'Pro',
-    price: '$9.99',
-    period: '/month',
-    features: ['Unlimited workouts', 'AI program builder', 'Advanced stats', 'Priority support'],
+    monthly: '$9.99',
+    annual: '$7.99',
+    features: ['Unlimited workouts', 'AI program builder', 'Advanced statistics', 'Priority support'],
     current: false,
     recommended: true,
   },
   {
     name: 'Elite',
-    price: '$19.99',
-    period: '/month',
+    monthly: '$19.99',
+    annual: '$15.99',
     features: ['Everything in Pro', '1-on-1 trainer access', 'Video analysis', 'Custom meal plans'],
     current: false,
   },
@@ -33,12 +34,31 @@ const plans = [
 
 export default function Subscription() {
   const router = useRouter();
+  const [annual, setAnnual] = useState(false);
 
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.title}>Choose Your Plan</Text>
         <Text style={styles.subtitle}>Unlock your full potential</Text>
+
+        <View style={styles.toggle}>
+          <TouchableOpacity
+            style={[styles.toggleBtn, !annual && styles.toggleBtnActive]}
+            onPress={() => setAnnual(false)}
+          >
+            <Text style={[styles.toggleText, !annual && styles.toggleTextActive]}>Monthly</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.toggleBtn, annual && styles.toggleBtnActive]}
+            onPress={() => setAnnual(true)}
+          >
+            <Text style={[styles.toggleText, annual && styles.toggleTextActive]}>Annual</Text>
+            <View style={styles.saveBadge}>
+              <Text style={styles.saveText}>-20%</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
 
         {plans.map((plan) => (
           <Card
@@ -52,8 +72,8 @@ export default function Subscription() {
             )}
             <Text style={styles.planName}>{plan.name}</Text>
             <View style={styles.priceRow}>
-              <Text style={styles.price}>{plan.price}</Text>
-              <Text style={styles.period}>{plan.period}</Text>
+              <Text style={styles.price}>{annual ? plan.annual : plan.monthly}</Text>
+              <Text style={styles.period}>/month</Text>
             </View>
             {plan.features.map((f) => (
               <View key={f} style={styles.featureRow}>
@@ -72,7 +92,7 @@ export default function Subscription() {
         ))}
 
         <Text style={styles.disclaimer}>
-          Subscriptions are mock placeholders. No real payments in Phase 1.
+          Subscriptions are demo placeholders. No real payments are processed.
         </Text>
       </ScrollView>
     </Screen>
@@ -86,7 +106,7 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.textPrimary,
-    fontSize: fontSize.xl,
+    fontSize: fontSize.xxl,
     fontWeight: '700',
     textAlign: 'center',
   },
@@ -95,7 +115,45 @@ const styles = StyleSheet.create({
     fontSize: fontSize.md,
     textAlign: 'center',
     marginTop: spacing.xs,
+    marginBottom: spacing.lg,
+  },
+  toggle: {
+    flexDirection: 'row',
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.lg,
+    padding: 4,
     marginBottom: spacing.xl,
+  },
+  toggleBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.md,
+    gap: spacing.xs,
+  },
+  toggleBtnActive: {
+    backgroundColor: colors.accent + '20',
+  },
+  toggleText: {
+    color: colors.textMuted,
+    fontSize: fontSize.sm,
+    fontWeight: '600',
+  },
+  toggleTextActive: {
+    color: colors.accent,
+  },
+  saveBadge: {
+    backgroundColor: colors.accent,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: borderRadius.sm,
+  },
+  saveText: {
+    color: colors.background,
+    fontSize: 10,
+    fontWeight: '700',
   },
   card: {
     marginBottom: spacing.lg,

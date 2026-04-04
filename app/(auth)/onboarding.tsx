@@ -1,28 +1,31 @@
 import { useState } from 'react';
 import { View, Text, StyleSheet, Dimensions } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '@/components/ui/Screen';
 import { Button } from '@/components/ui/Button';
 import { useAuthStore } from '@/store/authStore';
-import { colors, fontSize, spacing } from '@/config/theme';
+import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
 
 const { width } = Dimensions.get('window');
 
-const slides = [
+type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
+
+const slides: { title: string; subtitle: string; icon: IoniconsName }[] = [
   {
     title: 'Train Smarter',
     subtitle: 'AI-powered workout programs designed for your goals — day, week, month, or quarter.',
-    icon: '🏋️',
+    icon: 'barbell-outline',
   },
   {
     title: 'Track Everything',
     subtitle: 'Log workouts, monitor progress, and see your streaks grow over time.',
-    icon: '📊',
+    icon: 'analytics-outline',
   },
   {
     title: 'Work with Real Trainers',
     subtitle: 'Connect with certified trainers or follow pre-built programs at your own pace.',
-    icon: '🤝',
+    icon: 'people-outline',
   },
 ];
 
@@ -42,12 +45,26 @@ export default function Onboarding() {
     }
   };
 
+  const skip = () => {
+    completeOnboarding();
+    router.replace('/(auth)/login');
+  };
+
   const slide = slides[current];
 
   return (
     <Screen style={styles.screen}>
+      <View style={styles.topBar}>
+        <Text style={styles.brand}>AI Gym</Text>
+        {!isLast && (
+          <Text style={styles.skip} onPress={skip}>Skip</Text>
+        )}
+      </View>
+
       <View style={styles.content}>
-        <Text style={styles.icon}>{slide.icon}</Text>
+        <View style={styles.iconCircle}>
+          <Ionicons name={slide.icon} size={48} color={colors.accent} />
+        </View>
         <Text style={styles.title}>{slide.title}</Text>
         <Text style={styles.subtitle}>{slide.subtitle}</Text>
       </View>
@@ -69,14 +86,35 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     padding: spacing.lg,
   },
+  topBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  brand: {
+    color: colors.accent,
+    fontSize: fontSize.lg,
+    fontWeight: '700',
+    letterSpacing: 1,
+  },
+  skip: {
+    color: colors.textMuted,
+    fontSize: fontSize.sm,
+    fontWeight: '600',
+  },
   content: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: spacing.lg,
   },
-  icon: {
-    fontSize: 80,
+  iconCircle: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: colors.accent + '15',
+    alignItems: 'center',
+    justifyContent: 'center',
     marginBottom: spacing.xl,
   },
   title: {

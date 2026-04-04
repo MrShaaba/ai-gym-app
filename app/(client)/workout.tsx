@@ -5,52 +5,83 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
 
-const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-const TODAY_INDEX = new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;
+const now = new Date();
+const startOfWeek = new Date(now);
+startOfWeek.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+
+const WEEK_DAYS = Array.from({ length: 7 }, (_, i) => {
+  const d = new Date(startOfWeek);
+  d.setDate(startOfWeek.getDate() + i);
+  return {
+    label: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
+    date: d.getDate(),
+    isToday: d.toDateString() === now.toDateString(),
+    hasWorkout: [0, 1, 3, 5].includes(i),
+  };
+});
 
 const mockRoutines = [
-  { id: '1', name: 'Push Day', exercises: 5, duration: '45 min' },
-  { id: '2', name: 'Pull Day', exercises: 6, duration: '50 min' },
-  { id: '3', name: 'Leg Day', exercises: 5, duration: '55 min' },
+  { id: '1', name: 'Push — Chest Focused', muscles: 'Chest, Triceps, Shoulders', exercises: 7, duration: '50 min' },
+  { id: '2', name: 'Pull Day Chapter 3', muscles: 'Lats, Biceps, Rhomboids', exercises: 7, duration: '45 min' },
+  { id: '3', name: 'Lower Body', muscles: 'Quads, Glutes, Hamstrings, Calves', exercises: 8, duration: '55 min' },
+  { id: '4', name: 'Push Day — Shoulders', muscles: 'Shoulders, Triceps, Traps', exercises: 7, duration: '45 min' },
+  { id: '5', name: 'Upper Body Special', muscles: 'Chest, Back, Arms', exercises: 6, duration: '40 min' },
 ];
 
 export default function Workout() {
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.greeting}>Ready to train? 💪</Text>
+        <Text style={styles.pageTitle}>Workout</Text>
+        <Text style={styles.dateSubtitle}>
+          {now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+        </Text>
 
         <View style={styles.calendarStrip}>
-          {DAYS.map((day, i) => (
-            <View key={day} style={[styles.dayCol, i === TODAY_INDEX && styles.dayColActive]}>
-              <Text style={[styles.dayLabel, i === TODAY_INDEX && styles.dayLabelActive]}>{day}</Text>
-              <View style={[styles.dayDot, i === TODAY_INDEX && styles.dayDotActive]} />
+          {WEEK_DAYS.map((day) => (
+            <View key={day.label} style={[styles.dayCol, day.isToday && styles.dayColActive]}>
+              <Text style={[styles.dayLabel, day.isToday && styles.dayLabelActive]}>{day.label.toUpperCase()}</Text>
+              <Text style={[styles.dayDate, day.isToday && styles.dayDateActive]}>{day.date}</Text>
+              {day.hasWorkout && <View style={[styles.dayDot, day.isToday && styles.dayDotActive]} />}
             </View>
           ))}
         </View>
 
         <Text style={styles.sectionTitle}>Today's Routines</Text>
 
-        {mockRoutines.map((routine) => (
-          <Card key={routine.id} style={styles.routineCard}>
+        {mockRoutines.slice(0, 3).map((routine) => (
+          <Card key={routine.id} accent style={styles.routineCard}>
             <View style={styles.routineRow}>
-              <View>
+              <View style={styles.routineInfo}>
                 <Text style={styles.routineName}>{routine.name}</Text>
+                <Text style={styles.routineMuscles}>{routine.muscles}</Text>
                 <Text style={styles.routineMeta}>
-                  {routine.exercises} exercises · {routine.duration}
+                  {routine.exercises} exercises  ·  {routine.duration}
                 </Text>
               </View>
-              <Ionicons name="play-circle" size={36} color={colors.accent} />
+              <TouchableOpacity style={styles.playBtn}>
+                <Ionicons name="play" size={20} color={colors.background} />
+              </TouchableOpacity>
             </View>
           </Card>
         ))}
 
-        <Button
-          title="Generate AI Workout"
-          variant="outline"
-          onPress={() => {}}
-          style={styles.aiBtn}
-        />
+        <Text style={styles.sectionTitle}>Quick Actions</Text>
+        <View style={styles.quickActions}>
+          <Button
+            title="Generate Workout"
+            icon="sparkles-outline"
+            onPress={() => {}}
+            style={styles.actionBtn}
+          />
+          <Button
+            title="Browse Routines"
+            icon="library-outline"
+            variant="secondary"
+            onPress={() => {}}
+            style={styles.actionBtn}
+          />
+        </View>
       </ScrollView>
     </Screen>
   );
@@ -61,10 +92,15 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     paddingBottom: spacing.xxl,
   },
-  greeting: {
+  pageTitle: {
     color: colors.textPrimary,
-    fontSize: fontSize.xl,
+    fontSize: fontSize.xxl,
     fontWeight: '700',
+  },
+  dateSubtitle: {
+    color: colors.textSecondary,
+    fontSize: fontSize.sm,
+    marginTop: spacing.xs,
     marginBottom: spacing.lg,
   },
   calendarStrip: {
@@ -73,7 +109,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderRadius: borderRadius.lg,
     paddingVertical: spacing.md,
-    paddingHorizontal: spacing.sm,
+    paddingHorizontal: spacing.xs,
     marginBottom: spacing.xl,
   },
   dayCol: {
@@ -88,18 +124,27 @@ const styles = StyleSheet.create({
   },
   dayLabel: {
     color: colors.textMuted,
-    fontSize: fontSize.sm,
-    fontWeight: '500',
+    fontSize: 10,
+    fontWeight: '600',
+    letterSpacing: 0.5,
   },
   dayLabelActive: {
+    color: colors.accent,
+  },
+  dayDate: {
+    color: colors.textSecondary,
+    fontSize: fontSize.md,
+    fontWeight: '600',
+  },
+  dayDateActive: {
     color: colors.accent,
     fontWeight: '700',
   },
   dayDot: {
-    width: 6,
-    height: 6,
+    width: 5,
+    height: 5,
     borderRadius: 3,
-    backgroundColor: 'transparent',
+    backgroundColor: colors.accent + '60',
   },
   dayDotActive: {
     backgroundColor: colors.accent,
@@ -120,17 +165,40 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+  routineInfo: {
+    flex: 1,
+    marginRight: spacing.md,
+  },
   routineName: {
     color: colors.textPrimary,
     fontSize: fontSize.lg,
     fontWeight: '600',
+  },
+  routineMuscles: {
+    color: colors.accent,
+    fontSize: fontSize.xs,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginTop: spacing.xs,
   },
   routineMeta: {
     color: colors.textMuted,
     fontSize: fontSize.sm,
     marginTop: spacing.xs,
   },
-  aiBtn: {
-    marginTop: spacing.md,
+  playBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickActions: {
+    gap: spacing.md,
+  },
+  actionBtn: {
+    // full width default
   },
 });

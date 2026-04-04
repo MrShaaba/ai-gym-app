@@ -1,14 +1,24 @@
 import { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '@/components/ui/Screen';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { useAuthStore } from '@/store/authStore';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
 import type { UserRole } from '@/types/user';
 
+type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
+
+const roles: { key: UserRole; label: string; desc: string; icon: IoniconsName }[] = [
+  { key: 'client', label: 'Client', desc: 'Track workouts & follow programs', icon: 'fitness-outline' },
+  { key: 'trainer', label: 'Trainer', desc: 'Manage clients & build programs', icon: 'clipboard-outline' },
+];
+
 export default function Register() {
   const router = useRouter();
+  const setPendingRole = useAuthStore((s) => s.setPendingRole);
   const [selectedRole, setSelectedRole] = useState<UserRole>('client');
 
   return (
@@ -21,25 +31,30 @@ export default function Register() {
       <View style={styles.form}>
         <Input label="Full Name" placeholder="Your name" autoCapitalize="words" />
         <Input label="Email" placeholder="you@example.com" keyboardType="email-address" autoCapitalize="none" />
-        <Input label="Password" placeholder="••••••••" secureTextEntry />
+        <Input label="Password" placeholder="Create a password" secureTextEntry />
 
         <Text style={styles.roleLabel}>I am a:</Text>
         <View style={styles.roleRow}>
-          <TouchableOpacity
-            style={[styles.roleBtn, selectedRole === 'client' && styles.roleBtnActive]}
-            onPress={() => setSelectedRole('client')}
-          >
-            <Text style={[styles.roleText, selectedRole === 'client' && styles.roleTextActive]}>Client</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.roleBtn, selectedRole === 'trainer' && styles.roleBtnActive]}
-            onPress={() => setSelectedRole('trainer')}
-          >
-            <Text style={[styles.roleText, selectedRole === 'trainer' && styles.roleTextActive]}>Trainer</Text>
-          </TouchableOpacity>
+          {roles.map((r) => (
+            <TouchableOpacity
+              key={r.key}
+              style={[styles.roleBtn, selectedRole === r.key && styles.roleBtnActive]}
+              onPress={() => setSelectedRole(r.key)}
+            >
+              <Ionicons
+                name={r.icon}
+                size={24}
+                color={selectedRole === r.key ? colors.accent : colors.textMuted}
+              />
+              <Text style={[styles.roleText, selectedRole === r.key && styles.roleTextActive]}>
+                {r.label}
+              </Text>
+              <Text style={styles.roleDesc}>{r.desc}</Text>
+            </TouchableOpacity>
+          ))}
         </View>
 
-        <Button title="Create Account" onPress={() => router.push('/(auth)/otp-verify')} />
+        <Button title="Create Account" onPress={() => { setPendingRole(selectedRole); router.push('/(auth)/otp-verify'); }} />
       </View>
 
       <View style={styles.footer}>
@@ -85,10 +100,12 @@ const styles = StyleSheet.create({
   roleBtn: {
     flex: 1,
     paddingVertical: spacing.md,
+    paddingHorizontal: spacing.sm,
     borderRadius: borderRadius.md,
     borderWidth: 1,
     borderColor: colors.border,
     alignItems: 'center',
+    gap: spacing.xs,
   },
   roleBtnActive: {
     borderColor: colors.accent,
@@ -101,6 +118,11 @@ const styles = StyleSheet.create({
   },
   roleTextActive: {
     color: colors.accent,
+  },
+  roleDesc: {
+    color: colors.textMuted,
+    fontSize: fontSize.xs,
+    textAlign: 'center',
   },
   footer: {
     flexDirection: 'row',

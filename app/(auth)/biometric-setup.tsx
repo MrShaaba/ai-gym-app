@@ -11,6 +11,7 @@ import { colors, fontSize, spacing } from '@/config/theme';
 export default function BiometricSetup() {
   const router = useRouter();
   const login = useAuthStore((s) => s.login);
+  const pendingRole = useAuthStore((s) => s.pendingRole);
   const [supported, setSupported] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -22,14 +23,15 @@ export default function BiometricSetup() {
       promptMessage: 'Enable biometric login',
       fallbackLabel: 'Use passcode',
     });
-    // Mock login regardless of biometric result for MVP
-    login('client');
-    router.replace('/(client)/workout');
+    const role = pendingRole ?? 'client';
+    login(role);
+    router.replace(role === 'trainer' ? '/(trainer)/dashboard' : '/(client)/workout');
   };
 
   const handleSkip = () => {
-    login('client');
-    router.replace('/(client)/workout');
+    const role = pendingRole ?? 'client';
+    login(role);
+    router.replace(role === 'trainer' ? '/(trainer)/dashboard' : '/(client)/workout');
   };
 
   return (

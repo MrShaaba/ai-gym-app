@@ -5,10 +5,11 @@ import { colors, spacing, borderRadius } from '@/config/theme';
 interface CardProps {
   children: React.ReactNode;
   style?: StyleProp<ViewStyle>;
+  accent?: boolean;
 }
 
-export function Card({ children, style }: CardProps) {
-  return <View style={[styles.card, style]}>{children}</View>;
+export function Card({ children, style, accent = false }: CardProps) {
+  return <View style={[styles.card, accent && styles.accent, style]}>{children}</View>;
 }
 
 const styles = StyleSheet.create({
@@ -16,6 +17,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card,
     borderRadius: borderRadius.lg,
     padding: spacing.md,
+  },
+  accent: {
     borderLeftWidth: 3,
     borderLeftColor: colors.accent,
   },

@@ -1,4 +1,5 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch } from 'react-native';
+import { useState, useCallback } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '@/components/ui/Screen';
@@ -13,7 +14,7 @@ interface SettingRow {
   icon: IoniconsName;
   label: string;
   type: 'nav' | 'toggle';
-  value?: boolean;
+  key?: string;
 }
 
 const sections: { title: string; rows: SettingRow[] }[] = [
@@ -28,9 +29,9 @@ const sections: { title: string; rows: SettingRow[] }[] = [
   {
     title: 'Preferences',
     rows: [
-      { icon: 'notifications-outline', label: 'Push Notifications', type: 'toggle', value: true },
-      { icon: 'moon-outline', label: 'Dark Mode', type: 'toggle', value: true },
-      { icon: 'barbell-outline', label: 'Metric Units', type: 'toggle', value: true },
+      { icon: 'notifications-outline', label: 'Push Notifications', type: 'toggle', key: 'notifications' },
+      { icon: 'moon-outline', label: 'Dark Mode', type: 'toggle', key: 'darkMode' },
+      { icon: 'barbell-outline', label: 'Metric Units', type: 'toggle', key: 'metric' },
     ],
   },
   {
@@ -46,6 +47,15 @@ const sections: { title: string; rows: SettingRow[] }[] = [
 export default function Settings() {
   const router = useRouter();
   const logout = useAuthStore((s) => s.logout);
+  const [toggles, setToggles] = useState<Record<string, boolean>>({
+    notifications: true,
+    darkMode: true,
+    metric: true,
+  });
+
+  const handleToggle = useCallback((key: string) => {
+    setToggles((prev) => ({ ...prev, [key]: !prev[key] }));
+  }, []);
 
   const handleSignOut = () => {
     logout();
@@ -73,9 +83,10 @@ export default function Settings() {
                     <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
                   ) : (
                     <Switch
-                      value={row.value}
+                      value={row.key ? toggles[row.key] : false}
+                      onValueChange={() => { if (row.key) handleToggle(row.key); }}
                       trackColor={{ false: colors.border, true: colors.accent + '60' }}
-                      thumbColor={row.value ? colors.accent : colors.textMuted}
+                      thumbColor={row.key && toggles[row.key] ? colors.accent : colors.textMuted}
                     />
                   )}
                 </TouchableOpacity>
@@ -84,9 +95,9 @@ export default function Settings() {
           </View>
         ))}
 
-        <Button title="Sign Out" variant="outline" onPress={handleSignOut} style={styles.signOut} />
+        <Button title="Sign Out" icon="log-out-outline" variant="outline" onPress={handleSignOut} style={styles.signOut} />
 
-        <Text style={styles.version}>AI Gym v0.1.0 · Phase 1 MVP</Text>
+        <Text style={styles.version}>AI Gym v0.2.0 · Phase 2</Text>
       </ScrollView>
     </Screen>
   );

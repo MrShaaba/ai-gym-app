@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '@/components/ui/Screen';
@@ -16,7 +16,7 @@ const measurements = [
 const activityItems = [
   { label: 'Member Since', value: 'Jan 2025' },
   { label: 'Total Workouts', value: '142' },
-  { label: 'Current Streak', value: '7 days 🔥' },
+  { label: 'Current Streak', value: '7 days' },
   { label: 'Longest Streak', value: '21 days' },
 ];
 
@@ -32,10 +32,17 @@ export default function Profile() {
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.container}>
-        <View style={styles.avatar}>
-          <Ionicons name="person-circle" size={80} color={colors.textMuted} />
+        <View style={styles.avatarSection}>
+          <View style={styles.avatarCircle}>
+            <Text style={styles.avatarInitials}>AJ</Text>
+          </View>
           <Text style={styles.name}>Alex Johnson</Text>
-          <Text style={styles.role}>Client</Text>
+          <View style={styles.badgeRow}>
+            <View style={styles.proBadge}>
+              <Ionicons name="shield-checkmark" size={12} color={colors.accent} />
+              <Text style={styles.proBadgeText}>PRO</Text>
+            </View>
+          </View>
         </View>
 
         <Text style={styles.sectionTitle}>Measurements</Text>
@@ -59,8 +66,9 @@ export default function Profile() {
         </Card>
 
         <View style={styles.actions}>
-          <Button title="Settings" variant="secondary" onPress={() => router.push('/(shared)/settings')} />
-          <Button title="Sign Out" variant="outline" onPress={handleSignOut} />
+          <Button title="Settings" icon="settings-outline" variant="secondary" onPress={() => router.push('/(shared)/settings')} />
+          <Button title="Subscription" icon="card-outline" variant="secondary" onPress={() => router.push('/(shared)/subscription')} />
+          <Button title="Sign Out" icon="log-out-outline" variant="outline" onPress={handleSignOut} />
         </View>
       </ScrollView>
     </Screen>
@@ -72,9 +80,22 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     paddingBottom: spacing.xxl,
   },
-  avatar: {
+  avatarSection: {
     alignItems: 'center',
     marginBottom: spacing.xl,
+  },
+  avatarCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: colors.accent + '20',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarInitials: {
+    color: colors.accent,
+    fontSize: fontSize.xl,
+    fontWeight: '700',
   },
   name: {
     color: colors.textPrimary,
@@ -82,11 +103,24 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginTop: spacing.sm,
   },
-  role: {
+  badgeRow: {
+    flexDirection: 'row',
+    marginTop: spacing.sm,
+  },
+  proBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.accent + '15',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.full,
+    gap: 4,
+  },
+  proBadgeText: {
     color: colors.accent,
-    fontSize: fontSize.sm,
-    fontWeight: '600',
-    marginTop: spacing.xs,
+    fontSize: fontSize.xs,
+    fontWeight: '700',
+    letterSpacing: 1,
   },
   sectionTitle: {
     color: colors.textSecondary,
