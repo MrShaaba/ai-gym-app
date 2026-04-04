@@ -14,7 +14,7 @@ const trainerStats = [
   { label: 'Rating', value: '4.9' },
 ];
 
-const certifications = ['NASM-CPT', 'CSCS', 'Precision Nutrition L1'];
+const certifications = ['NASM-CPT', 'CSCS', 'Precision Nutrition L1', 'Muscle Majstor Certified'];
 
 export default function TrainerProfile() {
   const router = useRouter();
@@ -30,10 +30,10 @@ export default function TrainerProfile() {
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.avatarSection}>
           <View style={styles.avatarCircle}>
-            <Text style={styles.avatarInitials}>CT</Text>
+            <Text style={styles.avatarInitials}>MM</Text>
           </View>
-          <Text style={styles.name}>Coach Taylor</Text>
-          <Text style={styles.bio}>Strength & Conditioning Specialist</Text>
+          <Text style={styles.name}>Marko</Text>
+          <Text style={styles.bio}>Muscle Muscle Majstor</Text>
           <View style={styles.certRow}>
             {certifications.map((cert) => (
               <View key={cert} style={styles.certBadge}>

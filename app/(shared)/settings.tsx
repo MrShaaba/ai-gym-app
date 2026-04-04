@@ -97,7 +97,7 @@ export default function Settings() {
 
         <Button title="Sign Out" icon="log-out-outline" variant="outline" onPress={handleSignOut} style={styles.signOut} />
 
-        <Text style={styles.version}>AI Gym v0.2.0 · Phase 2</Text>
+        <Text style={styles.version}>AI Gym v0.3.0 · Phase 3</Text>
       </ScrollView>
     </Screen>
   );

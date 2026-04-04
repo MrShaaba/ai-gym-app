@@ -1,8 +1,11 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '@/components/ui/Screen';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { useWorkoutStore } from '@/store/workoutStore';
+import { ROUTINES } from '@/data/routines';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
 
 const now = new Date();
@@ -20,15 +23,22 @@ const WEEK_DAYS = Array.from({ length: 7 }, (_, i) => {
   };
 });
 
-const mockRoutines = [
-  { id: '1', name: 'Push — Chest Focused', muscles: 'Chest, Triceps, Shoulders', exercises: 7, duration: '50 min' },
-  { id: '2', name: 'Pull Day Chapter 3', muscles: 'Lats, Biceps, Rhomboids', exercises: 7, duration: '45 min' },
-  { id: '3', name: 'Lower Body', muscles: 'Quads, Glutes, Hamstrings, Calves', exercises: 8, duration: '55 min' },
-  { id: '4', name: 'Push Day — Shoulders', muscles: 'Shoulders, Triceps, Traps', exercises: 7, duration: '45 min' },
-  { id: '5', name: 'Upper Body Special', muscles: 'Chest, Back, Arms', exercises: 6, duration: '40 min' },
-];
-
 export default function Workout() {
+  const router = useRouter();
+  const startWorkout = useWorkoutStore((s) => s.startWorkout);
+  const activeSession = useWorkoutStore((s) => s.activeSession);
+
+  const handlePlay = (routineId: string) => {
+    const routine = ROUTINES.find((r) => r.id === routineId);
+    if (!routine) return;
+    startWorkout(routine);
+    router.push('/(workout)/session');
+  };
+
+  const handleResume = () => {
+    router.push('/(workout)/session');
+  };
+
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.container}>
@@ -47,19 +57,44 @@ export default function Workout() {
           ))}
         </View>
 
+        {activeSession && (
+          <TouchableOpacity style={styles.resumeBanner} onPress={handleResume}>
+            <View style={styles.resumeLeft}>
+              <Ionicons name="play-circle" size={24} color={colors.accent} />
+              <View>
+                <Text style={styles.resumeTitle}>In Progress</Text>
+                <Text style={styles.resumeRoutine}>{activeSession.routineName}</Text>
+              </View>
+            </View>
+            <Text style={styles.resumeAction}>Resume →</Text>
+          </TouchableOpacity>
+        )}
+
         <Text style={styles.sectionTitle}>Today's Routines</Text>
 
-        {mockRoutines.slice(0, 3).map((routine) => (
+        {ROUTINES.slice(0, 3).map((routine) => (
           <Card key={routine.id} accent style={styles.routineCard}>
             <View style={styles.routineRow}>
               <View style={styles.routineInfo}>
                 <Text style={styles.routineName}>{routine.name}</Text>
-                <Text style={styles.routineMuscles}>{routine.muscles}</Text>
-                <Text style={styles.routineMeta}>
-                  {routine.exercises} exercises  ·  {routine.duration}
+                <Text style={styles.routineMuscles}>
+                  {[...new Set(routine.exercises.flatMap((e) => e.exercise.muscleGroups))].slice(0, 3).join(', ')}
                 </Text>
+                <Text style={styles.routineMeta}>
+                  {routine.exercises.length} exercises  ·  {routine.durationMinutes} min
+                </Text>
+                {routine.assignedBy && (
+                  <View style={styles.trainerBadge}>
+                    <Ionicons name="person-circle-outline" size={12} color={colors.accent} />
+                    <Text style={styles.trainerText}>Assigned by {routine.assignedBy}</Text>
+                  </View>
+                )}
               </View>
-              <TouchableOpacity style={styles.playBtn}>
+              <TouchableOpacity
+                style={styles.playBtn}
+                onPress={() => handlePlay(routine.id)}
+                disabled={!!activeSession}
+              >
                 <Ionicons name="play" size={20} color={colors.background} />
               </TouchableOpacity>
             </View>
@@ -194,6 +229,50 @@ const styles = StyleSheet.create({
     backgroundColor: colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  trainerBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: spacing.xs,
+  },
+  trainerText: {
+    color: colors.accent,
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  resumeBanner: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: colors.accent + '15',
+    borderColor: colors.accent + '40',
+    borderWidth: 1,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.xl,
+  },
+  resumeLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  resumeTitle: {
+    color: colors.accent,
+    fontSize: fontSize.xs,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  resumeRoutine: {
+    color: colors.textPrimary,
+    fontSize: fontSize.md,
+    fontWeight: '600',
+  },
+  resumeAction: {
+    color: colors.accent,
+    fontSize: fontSize.sm,
+    fontWeight: '600',
   },
   quickActions: {
     gap: spacing.md,

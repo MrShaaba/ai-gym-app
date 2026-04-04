@@ -18,6 +18,7 @@ export default function RootLayout() {
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(client)" />
         <Stack.Screen name="(trainer)" />
+        <Stack.Screen name="(workout)" options={{ gestureEnabled: false }} />
         <Stack.Screen name="(shared)" options={{ presentation: 'modal' }} />
       </Stack>
     </SafeAreaProvider>

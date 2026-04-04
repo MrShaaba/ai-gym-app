@@ -2,37 +2,33 @@ import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '@/components/ui/Screen';
 import { Card } from '@/components/ui/Card';
+import { useWorkoutStore } from '@/store/workoutStore';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
 
-const stats = [
-  { label: 'Workouts', value: '24', sub: 'this month', icon: 'barbell-outline' as const },
-  { label: 'Volume', value: '42,800', sub: 'kg lifted', icon: 'trending-up-outline' as const },
-  { label: 'Streak', value: '7', sub: 'days', icon: 'flame-outline' as const },
-  { label: 'PR Count', value: '3', sub: 'this week', icon: 'trophy-outline' as const },
-];
-
-const recentPRs = [
-  { exercise: 'Bench Press', value: '100 kg', date: 'Today', icon: 'arrow-up-outline' as const },
-  { exercise: 'Squat', value: '140 kg', date: 'Yesterday', icon: 'arrow-up-outline' as const },
-  { exercise: 'Deadlift', value: '180 kg', date: '3 days ago', icon: 'arrow-up-outline' as const },
-];
-
-const weeklyVolume = [
-  { day: 'Mon', value: 0.85 },
-  { day: 'Tue', value: 0.6 },
-  { day: 'Wed', value: 0 },
-  { day: 'Thu', value: 0.95 },
-  { day: 'Fri', value: 0.4 },
-  { day: 'Sat', value: 1.0 },
-  { day: 'Sun', value: 0 },
-];
-
 export default function Statistics() {
+  const history = useWorkoutStore((s) => s.history);
+
+  const totalWorkouts = history.length;
+  const totalVolume = history.reduce((sum, w) => sum + w.totalVolume, 0);
+  const totalSets = history.reduce((sum, w) => sum + w.totalSets, 0);
+  const totalReps = history.reduce((sum, w) => sum + w.totalReps, 0);
+
+  const stats = [
+    { label: 'Workouts', value: String(totalWorkouts || '—'), sub: 'all time', icon: 'barbell-outline' as const },
+    { label: 'Volume', value: totalVolume > 0 ? `${(totalVolume / 1000).toFixed(1)}k` : '—', sub: 'kg lifted', icon: 'trending-up-outline' as const },
+    { label: 'Sets', value: String(totalSets || '—'), sub: 'completed', icon: 'layers-outline' as const },
+    { label: 'Reps', value: String(totalReps || '—'), sub: 'total', icon: 'repeat-outline' as const },
+  ];
+
+  // Build recent workouts list (last 5)
+  const recentWorkouts = history.slice(0, 5);
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.title}>Statistics</Text>
-        <Text style={styles.subtitle}>Your progress this month</Text>
+        <Text style={styles.subtitle}>
+          {totalWorkouts > 0 ? `${totalWorkouts} workout${totalWorkouts === 1 ? '' : 's'} completed` : 'Complete a workout to see stats'}
+        </Text>
 
         <View style={styles.grid}>
           {stats.map((s) => (
@@ -45,45 +41,49 @@ export default function Statistics() {
           ))}
         </View>
 
-        <Text style={styles.sectionTitle}>Weekly Volume</Text>
-        <Card style={styles.chartCard}>
-          <View style={styles.chartContainer}>
-            {weeklyVolume.map((w) => (
-              <View key={w.day} style={styles.barCol}>
-                <View style={styles.barTrack}>
-                  <View
-                    style={[
-                      styles.barFill,
-                      { height: `${Math.max(w.value * 100, 4)}%` },
-                      w.value === 0 && styles.barEmpty,
-                    ]}
-                  />
-                </View>
-                <Text style={styles.barLabel}>{w.day}</Text>
-              </View>
-            ))}
-          </View>
-        </Card>
+        <Text style={styles.sectionTitle}>Recent Workouts</Text>
 
-        <Text style={styles.sectionTitle}>Recent PRs</Text>
-
-        {recentPRs.map((pr) => (
-          <Card key={pr.exercise} style={styles.prCard}>
-            <View style={styles.prRow}>
-              <View style={styles.prIcon}>
-                <Ionicons name={pr.icon} size={16} color={colors.accent} />
-              </View>
-              <View style={styles.prInfo}>
-                <Text style={styles.prExercise}>{pr.exercise}</Text>
-                <Text style={styles.prDate}>{pr.date}</Text>
-              </View>
-              <Text style={styles.prValue}>{pr.value}</Text>
-            </View>
+        {recentWorkouts.length === 0 && (
+          <Card style={styles.emptyCard}>
+            <Ionicons name="barbell-outline" size={32} color={colors.textMuted} />
+            <Text style={styles.emptyText}>No workouts yet — start one from the Workout tab!</Text>
           </Card>
-        ))}
+        )}
+
+        {recentWorkouts.map((w) => {
+          const mins = Math.round(w.durationSeconds / 60);
+          const date = new Date(w.completedAt);
+          const timeAgo = getTimeAgo(date);
+          return (
+            <Card key={w.id} style={styles.prCard}>
+              <View style={styles.prRow}>
+                <View style={styles.prIcon}>
+                  <Ionicons name="checkmark-circle" size={16} color={colors.accent} />
+                </View>
+                <View style={styles.prInfo}>
+                  <Text style={styles.prExercise}>{w.routineName}</Text>
+                  <Text style={styles.prDate}>{timeAgo}  ·  {mins} min  ·  {w.totalSets} sets</Text>
+                </View>
+                <Text style={styles.prValue}>{(w.totalVolume / 1000).toFixed(1)}k kg</Text>
+              </View>
+            </Card>
+          );
+        })}
       </ScrollView>
     </Screen>
   );
+}
+
+function getTimeAgo(date: Date): string {
+  const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (seconds < 60) return 'Just now';
+  const mins = Math.floor(seconds / 60);
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days === 1) return 'Yesterday';
+  return `${days}d ago`;
 }
 
 const styles = StyleSheet.create({
@@ -144,40 +144,17 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     marginBottom: spacing.md,
   },
-  chartCard: {
+  emptyCard: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.xl,
+    gap: spacing.sm,
     marginBottom: spacing.xl,
   },
-  chartContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    height: 120,
-  },
-  barCol: {
-    flex: 1,
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  barTrack: {
-    flex: 1,
-    width: 20,
-    backgroundColor: colors.border,
-    borderRadius: borderRadius.sm,
-    overflow: 'hidden',
-    justifyContent: 'flex-end',
-  },
-  barFill: {
-    width: '100%',
-    backgroundColor: colors.accent,
-    borderRadius: borderRadius.sm,
-  },
-  barEmpty: {
-    backgroundColor: colors.border,
-  },
-  barLabel: {
+  emptyText: {
     color: colors.textMuted,
-    fontSize: 10,
-    fontWeight: '600',
+    fontSize: fontSize.sm,
+    textAlign: 'center',
   },
   prCard: {
     marginBottom: spacing.sm,

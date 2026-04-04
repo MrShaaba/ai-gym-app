@@ -6,9 +6,9 @@ import { Button } from '@/components/ui/Button';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
 
 const mockPrograms = [
-  { id: '1', name: 'Fat Loss Fundamentals', clients: 4, weeks: 8, difficulty: 'Beginner', muscles: 'Full Body, Cardio' },
-  { id: '2', name: 'Hypertrophy Pro', clients: 3, weeks: 12, difficulty: 'Intermediate', muscles: 'Chest, Back, Legs, Arms' },
-  { id: '3', name: 'Competition Prep', clients: 1, weeks: 16, difficulty: 'Advanced', muscles: 'Squat, Bench, Deadlift' },
+  { id: '1', name: 'Marko\'s Strength Foundation', clients: 4, weeks: 8, difficulty: 'Beginner', muscles: 'Full Body, Compound Lifts' },
+  { id: '2', name: 'Hypertrophy Blueprint', clients: 3, weeks: 12, difficulty: 'Intermediate', muscles: 'Chest, Back, Legs, Arms' },
+  { id: '3', name: 'Competition Prep Elite', clients: 1, weeks: 16, difficulty: 'Advanced', muscles: 'Squat, Bench, Deadlift' },
 ];
 
 const difficultyColor: Record<string, string> = {

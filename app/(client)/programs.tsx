@@ -6,10 +6,10 @@ import { Button } from '@/components/ui/Button';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
 
 const mockPrograms = [
-  { id: '1', name: 'Beginner Strength', weeks: 8, difficulty: 'Beginner', days: 3, muscles: 'Full Body', progress: 0.75 },
-  { id: '2', name: 'Hypertrophy Split', weeks: 12, difficulty: 'Intermediate', days: 5, muscles: 'Chest, Back, Legs, Shoulders, Arms', progress: 0.3 },
-  { id: '3', name: 'Powerlifting Peak', weeks: 6, difficulty: 'Advanced', days: 4, muscles: 'Squat, Bench, Deadlift', progress: 0 },
-  { id: '4', name: 'Athletic Performance', weeks: 10, difficulty: 'Intermediate', days: 4, muscles: 'Legs, Core, Plyometrics', progress: 0.1 },
+  { id: '1', name: 'Beginner Strength', weeks: 8, difficulty: 'Beginner', days: 3, muscles: 'Full Body', progress: 0.75, assignedBy: 'Marko' },
+  { id: '2', name: 'Hypertrophy Split', weeks: 12, difficulty: 'Intermediate', days: 5, muscles: 'Chest, Back, Legs, Shoulders, Arms', progress: 0.3, assignedBy: 'Marko' },
+  { id: '3', name: 'Powerlifting Peak', weeks: 6, difficulty: 'Advanced', days: 4, muscles: 'Squat, Bench, Deadlift', progress: 0, assignedBy: 'Marko' },
+  { id: '4', name: 'Athletic Performance', weeks: 10, difficulty: 'Intermediate', days: 4, muscles: 'Legs, Core, Plyometrics', progress: 0.1, assignedBy: 'Marko' },
 ];
 
 const difficultyColor: Record<string, string> = {
@@ -34,6 +34,12 @@ export default function Programs() {
                 <Text style={styles.meta}>
                   {p.weeks} weeks  ·  {p.days} days/week
                 </Text>
+                {p.assignedBy && (
+                  <View style={styles.trainerBadge}>
+                    <Ionicons name="person-circle-outline" size={12} color={colors.accent} />
+                    <Text style={styles.trainerText}>Assigned by {p.assignedBy}</Text>
+                  </View>
+                )}
               </View>
               <View style={[styles.badge, { backgroundColor: difficultyColor[p.difficulty] + '20' }]}>
                 <Text style={[styles.badgeText, { color: difficultyColor[p.difficulty] }]}>
@@ -146,5 +152,16 @@ const styles = StyleSheet.create({
   },
   aiBtn: {
     marginTop: spacing.md,
+  },
+  trainerBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: spacing.xs,
+  },
+  trainerText: {
+    color: colors.accent,
+    fontSize: 11,
+    fontWeight: '500',
   },
 });

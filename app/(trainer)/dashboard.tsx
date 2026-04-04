@@ -30,7 +30,7 @@ export default function Dashboard() {
     <Screen>
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.title}>Dashboard</Text>
-        <Text style={styles.subtitle}>{greeting}, Coach</Text>
+        <Text style={styles.subtitle}>{greeting}, Marko</Text>
 
         <View style={styles.grid}>
           {quickStats.map((s) => (

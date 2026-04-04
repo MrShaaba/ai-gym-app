@@ -35,6 +35,7 @@ export interface WorkoutRoutine {
   exercises: WorkoutExercise[];
   difficulty: Difficulty;
   durationMinutes?: number;
+  assignedBy?: string;
 }
 
 export interface WorkoutProgram {
@@ -45,4 +46,40 @@ export interface WorkoutProgram {
   daysPerWeek: number;
   routines: WorkoutRoutine[];
   createdBy?: string;
+}
+
+// --- Phase 3: Active session & history types ---
+
+export interface SetLog {
+  reps: number;
+  weight: number;
+  completed: boolean;
+}
+
+export interface ExerciseLog {
+  exerciseId: string;
+  exerciseName: string;
+  sets: SetLog[];
+}
+
+export interface ActiveSession {
+  routineId: string;
+  routineName: string;
+  startedAt: number;
+  currentExerciseIndex: number;
+  exercises: ExerciseLog[];
+  restTimerEnd: number | null;
+}
+
+export interface CompletedWorkout {
+  id: string;
+  routineId: string;
+  routineName: string;
+  startedAt: number;
+  completedAt: number;
+  durationSeconds: number;
+  exercises: ExerciseLog[];
+  totalVolume: number;
+  totalSets: number;
+  totalReps: number;
 }
