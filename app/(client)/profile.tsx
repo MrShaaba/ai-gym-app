@@ -7,22 +7,26 @@ import { Button } from '@/components/ui/Button';
 import { useAuthStore } from '@/store/authStore';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
 
-const measurements = [
-  { label: 'Weight', value: '82 kg' },
-  { label: 'Height', value: '178 cm' },
-  { label: 'Body Fat', value: '15%' },
-];
-
-const activityItems = [
-  { label: 'Member Since', value: 'Jan 2025' },
-  { label: 'Total Workouts', value: '142' },
-  { label: 'Current Streak', value: '7 days' },
-  { label: 'Longest Streak', value: '21 days' },
-];
-
 export default function Profile() {
   const router = useRouter();
   const logout = useAuthStore((s) => s.logout);
+  const profile = useAuthStore((s) => s.profile);
+
+  const initials = (profile?.full_name ?? 'U')
+    .split(' ')
+    .map((w) => w[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+
+  const memberSince = profile?.created_at
+    ? new Date(profile.created_at).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
+    : '—';
+
+  const activityItems = [
+    { label: 'Member Since', value: memberSince },
+    { label: 'Goal', value: profile?.goal ?? '—' },
+  ];
 
   const handleSignOut = () => {
     logout();
@@ -34,26 +38,13 @@ export default function Profile() {
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.avatarSection}>
           <View style={styles.avatarCircle}>
-            <Text style={styles.avatarInitials}>AJ</Text>
+            <Text style={styles.avatarInitials}>{initials}</Text>
           </View>
-          <Text style={styles.name}>Alex Johnson</Text>
-          <View style={styles.badgeRow}>
-            <View style={styles.proBadge}>
-              <Ionicons name="shield-checkmark" size={12} color={colors.accent} />
-              <Text style={styles.proBadgeText}>PRO</Text>
-            </View>
-          </View>
+          <Text style={styles.name}>{profile?.full_name ?? 'User'}</Text>
+          {profile?.username && (
+            <Text style={styles.username}>@{profile.username}</Text>
+          )}
         </View>
-
-        <Text style={styles.sectionTitle}>Measurements</Text>
-        <Card style={styles.card}>
-          {measurements.map((m, i) => (
-            <View key={m.label} style={[styles.row, i < measurements.length - 1 && styles.rowBorder]}>
-              <Text style={styles.rowLabel}>{m.label}</Text>
-              <Text style={styles.rowValue}>{m.value}</Text>
-            </View>
-          ))}
-        </Card>
 
         <Text style={styles.sectionTitle}>Activity</Text>
         <Card style={styles.card}>
@@ -103,24 +94,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginTop: spacing.sm,
   },
-  badgeRow: {
-    flexDirection: 'row',
-    marginTop: spacing.sm,
-  },
-  proBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.accent + '15',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.full,
-    gap: 4,
-  },
-  proBadgeText: {
-    color: colors.accent,
-    fontSize: fontSize.xs,
-    fontWeight: '700',
-    letterSpacing: 1,
+  username: {
+    color: colors.textSecondary,
+    fontSize: fontSize.sm,
+    marginTop: 2,
   },
   sectionTitle: {
     color: colors.textSecondary,

@@ -61,6 +61,19 @@ export default function ClientLayout() {
           ),
         }}
       />
+      <Tabs.Screen
+        name="discover"
+        options={{
+          title: 'Discover',
+          tabBarIcon: ({ color, size }) => (
+            <TabBarIcon name="search-outline" color={color} size={size} />
+          ),
+        }}
+      />
+      <Tabs.Screen name="trainer-profile" options={{ href: null, tabBarStyle: { display: 'none' } }} />
+      <Tabs.Screen name="create-program" options={{ href: null, tabBarStyle: { display: 'none' } }} />
+      <Tabs.Screen name="generate" options={{ href: null, tabBarStyle: { display: 'none' } }} />
+      <Tabs.Screen name="review-plan" options={{ href: null, tabBarStyle: { display: 'none' } }} />
     </Tabs>
   );
 }

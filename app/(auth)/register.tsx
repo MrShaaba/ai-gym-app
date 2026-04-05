@@ -7,7 +7,10 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useAuthStore } from '@/store/authStore';
 import { signUp } from '@/services/auth';
+import { getProfile } from '@/services/profiles';
+import { setUsername, checkUsernameAvailable } from '@/services/marketplace';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
+import { USERNAME_REGEX } from '@/config/constants';
 import type { UserRole } from '@/types/user';
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
@@ -22,6 +25,7 @@ export default function Register() {
   const setPendingRole = useAuthStore((s) => s.setPendingRole);
   const [selectedRole, setSelectedRole] = useState<UserRole>('client');
   const [fullName, setFullName] = useState('');
+  const [username, setUsernameVal] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -30,10 +34,31 @@ export default function Register() {
   const handleCreate = async () => {
     setError('');
     if (!fullName || !email || !password) { setError('All fields are required.'); return; }
+    const trimmedUsername = username.trim().toLowerCase();
+    if (trimmedUsername && !USERNAME_REGEX.test(trimmedUsername)) {
+      setError('Username must be 3-20 chars: lowercase letters, numbers, underscores. Must start with a letter.');
+      return;
+    }
+    if (trimmedUsername) {
+      const available = await checkUsernameAvailable(trimmedUsername);
+      if (!available) { setError('Username is already taken.'); return; }
+    }
     setBusy(true);
     try {
-      await signUp({ email, password, fullName, role: selectedRole });
+      const data = await signUp({ email, password, fullName, role: selectedRole });
       setPendingRole(selectedRole);
+
+      // Eagerly set session so user object is available on trainer/client screens
+      if (data.session) {
+        useAuthStore.getState().setSession(data.session);
+        // Set username if provided
+        if (trimmedUsername) {
+          await setUsername(data.session.user.id, trimmedUsername);
+        }
+        const profile = await getProfile(data.session.user.id);
+        if (profile) useAuthStore.getState().setProfile(profile);
+      }
+
       router.push('/(auth)/biometric-setup');
     } catch (e: any) {
       setError(e.message ?? 'Registration failed');
@@ -51,6 +76,7 @@ export default function Register() {
 
       <View style={styles.form}>
         <Input label="Full Name" placeholder="Your name" autoCapitalize="words" value={fullName} onChangeText={setFullName} />
+        <Input label="Username (optional)" placeholder="e.g. fit_alex" autoCapitalize="none" autoCorrect={false} value={username} onChangeText={setUsernameVal} />
         <Input label="Email" placeholder="you@example.com" keyboardType="email-address" autoCapitalize="none" value={email} onChangeText={setEmail} />
         <Input label="Password" placeholder="Create a password" secureTextEntry value={password} onChangeText={setPassword} />
 

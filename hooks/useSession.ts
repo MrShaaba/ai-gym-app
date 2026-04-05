@@ -49,10 +49,12 @@ export function useSession() {
     const unsubscribe = onAuthStateChange(async (event, session) => {
       if (!mounted) return;
 
-      if (event === 'SIGNED_OUT' || !session) {
+      if (event === 'SIGNED_OUT') {
         logout();
         return;
       }
+
+      if (!session) return;
 
       setSession(session);
 

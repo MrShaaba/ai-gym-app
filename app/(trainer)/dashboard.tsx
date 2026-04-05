@@ -7,6 +7,8 @@ import { Badge } from '@/components/ui/Badge';
 import { useTrainerClients } from '@/hooks/useTrainerClients';
 import { useAssignmentStore } from '@/store/assignmentStore';
 import { useAuthStore } from '@/store/authStore';
+import { useUserId } from '@/hooks/useUserId';
+import { usePrograms } from '@/hooks/usePrograms';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
 
 const hour = new Date().getHours();
@@ -15,9 +17,10 @@ const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Go
 export default function Dashboard() {
   const router = useRouter();
   const profile = useAuthStore((s) => s.profile);
-  const userId = useAuthStore((s) => s.user?.id);
+  const userId = useUserId();
   const { clients } = useTrainerClients(userId);
   const assignments = useAssignmentStore((s) => s.assignments);
+  const { programs } = usePrograms('trainer', userId);
 
   const activeClients = clients.filter((c) => c.active).length;
   const activeAssignments = assignments.filter((a) => a.status !== 'completed').length;
@@ -28,8 +31,8 @@ export default function Dashboard() {
   const quickStats = [
     { label: 'Active Clients', value: String(activeClients), icon: 'people-outline' as const },
     { label: 'Active Plans', value: String(activeAssignments), icon: 'clipboard-outline' as const },
-    { label: 'Programs', value: '5', icon: 'barbell-outline' as const },
-    { label: 'Messages', value: '3', icon: 'chatbubbles-outline' as const },
+    { label: 'Programs', value: String(programs.length), icon: 'barbell-outline' as const },
+    { label: 'Messages', value: '—', icon: 'chatbubbles-outline' as const },
   ];
 
   const getClientName = (clientId: string) =>

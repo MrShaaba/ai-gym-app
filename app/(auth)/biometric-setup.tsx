@@ -6,23 +6,40 @@ import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '@/components/ui/Screen';
 import { Button } from '@/components/ui/Button';
 import { useAuthStore } from '@/store/authStore';
+import { getSession } from '@/services/auth';
+import { getProfile } from '@/services/profiles';
 import { colors, fontSize, spacing } from '@/config/theme';
 
 export default function BiometricSetup() {
   const router = useRouter();
-  const login = useAuthStore((s) => s.login);
-  const pendingRole = useAuthStore((s) => s.pendingRole);
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const [supported, setSupported] = useState<boolean | null>(null);
 
   useEffect(() => {
     LocalAuthentication.hasHardwareAsync().then(setSupported);
   }, []);
 
-  const proceed = () => {
+  const proceed = async () => {
+    const { pendingRole } = useAuthStore.getState();
     const role = pendingRole ?? 'client';
-    // If a Supabase session exists, store already knows the role. Otherwise fall back.
-    if (!isAuthenticated) login(role);
+
+    // Ensure we have a real Supabase session with a user object.
+    // signUp auto-confirms so a session should exist; recover it if the store is stale.
+    let user = useAuthStore.getState().user;
+    if (!user) {
+      const session = await getSession();
+      if (session?.user) {
+        useAuthStore.getState().setSession(session);
+        const profile = await getProfile(session.user.id);
+        if (profile) useAuthStore.getState().setProfile(profile);
+        user = session.user;
+      }
+    }
+    if (!user) {
+      // No Supabase session at all — must sign in manually
+      router.replace('/(auth)/login');
+      return;
+    }
+
     router.replace(role === 'trainer' ? '/(trainer)/dashboard' : '/(client)/workout');
   };
 

@@ -4,14 +4,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '@/components/ui/Screen';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
 import { useTrainerClients } from '@/hooks/useTrainerClients';
 import { useAssignmentStore } from '@/store/assignmentStore';
-import { useAuthStore } from '@/store/authStore';
+import { useUserId } from '@/hooks/useUserId';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
 
 export default function Clients() {
   const router = useRouter();
-  const userId = useAuthStore((s) => s.user?.id);
+  const userId = useUserId();
   const { clients, loading } = useTrainerClients(userId);
   const assignments = useAssignmentStore((s) => s.assignments);
 
@@ -26,6 +27,14 @@ export default function Clients() {
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.title}>Clients</Text>
         <Text style={styles.subtitle}>{clients.length} total  ·  {active.length} active</Text>
+
+        <Button
+          title="Invite Client"
+          icon="person-add-outline"
+          variant="outline"
+          onPress={() => router.push('/(trainer)/invite-client')}
+          style={{ marginBottom: spacing.lg }}
+        />
 
         <Text style={styles.sectionTitle}>Active ({active.length})</Text>
         {active.map((client) => {

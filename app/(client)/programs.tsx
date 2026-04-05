@@ -1,29 +1,26 @@
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { useMemo } from 'react';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { Screen } from '@/components/ui/Screen';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { useAssignmentStore } from '@/store/assignmentStore';
-import { useAuthStore } from '@/store/authStore';
+import { useUserId } from '@/hooks/useUserId';
+import { usePrograms } from '@/hooks/usePrograms';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
 
-const mockPrograms = [
-  { id: '1', name: 'Beginner Strength', weeks: 8, difficulty: 'Beginner', days: 3, muscles: 'Full Body', progress: 0.75, assignedBy: 'Marko' },
-  { id: '2', name: 'Hypertrophy Split', weeks: 12, difficulty: 'Intermediate', days: 5, muscles: 'Chest, Back, Legs, Shoulders, Arms', progress: 0.3, assignedBy: 'Marko' },
-  { id: '3', name: 'Powerlifting Peak', weeks: 6, difficulty: 'Advanced', days: 4, muscles: 'Squat, Bench, Deadlift', progress: 0, assignedBy: 'Marko' },
-  { id: '4', name: 'Athletic Performance', weeks: 10, difficulty: 'Intermediate', days: 4, muscles: 'Legs, Core, Plyometrics', progress: 0.1, assignedBy: 'Marko' },
-];
-
 const difficultyColor: Record<string, string> = {
-  Beginner: '#4ADE80',
-  Intermediate: '#FACC15',
-  Advanced: '#F87171',
+  beginner: '#4ADE80',
+  intermediate: '#FACC15',
+  advanced: '#F87171',
 };
 
 export default function Programs() {
-  const userId = useAuthStore((s) => s.user?.id);
+  const router = useRouter();
+  const userId = useUserId();
+  const { programs, loading } = usePrograms('client', userId);
   const allAssignments = useAssignmentStore((s) => s.assignments);
   const assignments = useMemo(
     () => allAssignments.filter((a) => a.clientId === userId),
@@ -51,23 +48,21 @@ export default function Programs() {
     <Screen>
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.title}>Programs</Text>
-        <Text style={styles.subtitle}>{mockPrograms.length} programs available</Text>
+        <Text style={styles.subtitle}>
+          {loading ? 'Loading…' : `${programs.length} program${programs.length !== 1 ? 's' : ''} available`}
+        </Text>
 
-        {mockPrograms.map((p) => (
+        {programs.map((p) => (
           <Card key={p.id} style={styles.card}>
             <View style={styles.row}>
               <View style={styles.info}>
                 <Text style={styles.name}>{p.name}</Text>
-                <Text style={styles.muscles}>{p.muscles}</Text>
-                <Text style={styles.meta}>
-                  {p.weeks} weeks  ·  {p.days} days/week
-                </Text>
-                {p.assignedBy && (
-                  <View style={styles.trainerBadge}>
-                    <Ionicons name="person-circle-outline" size={12} color={colors.accent} />
-                    <Text style={styles.trainerText}>Assigned by {p.assignedBy}</Text>
-                  </View>
+                {p.description && (
+                  <Text style={styles.muscles}>{p.description}</Text>
                 )}
+                <Text style={styles.meta}>
+                  {p.days_per_week} days/week
+                </Text>
                 {programStatus.has(p.name) && (
                   <Badge
                     label={programStatus.get(p.name)!.replace('_', ' ')}
@@ -75,21 +70,26 @@ export default function Programs() {
                     size="sm"
                   />
                 )}
+                {/* AI source badges */}
+                {p.source === 'ai' && (
+                  <View style={styles.sourceBadge}>
+                    <Ionicons name="sparkles" size={12} color={colors.accent} />
+                    <Text style={styles.sourceBadgeText}>AI Generated</Text>
+                  </View>
+                )}
+                {p.source === 'ai_endorsed' && (
+                  <View style={[styles.sourceBadge, styles.endorsedBadge]}>
+                    <Ionicons name="checkmark-circle" size={12} color="#4ADE80" />
+                    <Text style={[styles.sourceBadgeText, { color: '#4ADE80' }]}>Trainer Endorsed</Text>
+                  </View>
+                )}
               </View>
-              <View style={[styles.badge, { backgroundColor: difficultyColor[p.difficulty] + '20' }]}>
-                <Text style={[styles.badgeText, { color: difficultyColor[p.difficulty] }]}>
+              <View style={[styles.badge, { backgroundColor: (difficultyColor[p.difficulty] ?? colors.accent) + '20' }]}>
+                <Text style={[styles.badgeText, { color: difficultyColor[p.difficulty] ?? colors.accent }]}>
                   {p.difficulty}
                 </Text>
               </View>
             </View>
-            {p.progress > 0 && (
-              <View style={styles.progressRow}>
-                <View style={styles.progressTrack}>
-                  <View style={[styles.progressFill, { width: `${p.progress * 100}%` }]} />
-                </View>
-                <Text style={styles.progressLabel}>{Math.round(p.progress * 100)}%</Text>
-              </View>
-            )}
           </Card>
         ))}
 
@@ -97,7 +97,7 @@ export default function Programs() {
           title="AI Program Builder"
           icon="sparkles-outline"
           variant="outline"
-          onPress={() => {}}
+          onPress={() => router.push('/(client)/generate')}
           style={styles.aiBtn}
         />
       </ScrollView>
@@ -160,43 +160,19 @@ const styles = StyleSheet.create({
     fontSize: fontSize.xs,
     fontWeight: '700',
   },
-  progressRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: spacing.md,
-    gap: spacing.sm,
-  },
-  progressTrack: {
-    flex: 1,
-    height: 4,
-    backgroundColor: colors.border,
-    borderRadius: 2,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: colors.accent,
-    borderRadius: 2,
-  },
-  progressLabel: {
-    color: colors.textMuted,
-    fontSize: fontSize.xs,
-    fontWeight: '600',
-    width: 32,
-    textAlign: 'right',
-  },
   aiBtn: {
     marginTop: spacing.md,
   },
-  trainerBadge: {
+  sourceBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
     marginTop: spacing.xs,
   },
-  trainerText: {
+  endorsedBadge: {},
+  sourceBadgeText: {
     color: colors.accent,
-    fontSize: 11,
-    fontWeight: '500',
+    fontSize: fontSize.xs,
+    fontWeight: '600',
   },
 });

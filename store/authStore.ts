@@ -4,6 +4,8 @@ import type { Session, User } from '@supabase/supabase-js';
 import type { UserRole } from '@/types/user';
 import type { Profile } from '@/services/profiles';
 import { signOut } from '@/services/auth';
+import { useWorkoutStore } from '@/store/workoutStore';
+import { useAssignmentStore } from '@/store/assignmentStore';
 
 const ONBOARDED_KEY = 'ai-gym:hasOnboarded';
 
@@ -23,7 +25,6 @@ interface AuthState {
   setLoading: (v: boolean) => void;
   setSession: (session: Session) => void;
   setProfile: (profile: Profile) => void;
-  login: (role: UserRole) => void;
   logout: () => void;
   setPendingRole: (role: UserRole) => void;
   completeOnboarding: () => void;
@@ -50,10 +51,10 @@ export const useAuthStore = create<AuthState>((set) => ({
   setProfile: (profile) =>
     set({ profile, role: profile.role }),
 
-  login: (role) => set({ isAuthenticated: true, role, pendingRole: null }),
-
   logout: () => {
     signOut().catch(() => {}); // fire-and-forget; clears server session
+    useWorkoutStore.getState().reset();
+    useAssignmentStore.getState().reset();
     set({
       isAuthenticated: false,
       role: null,

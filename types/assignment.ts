@@ -17,6 +17,8 @@ export interface Assignment {
   assignedAt: number;
   startedAt?: number;
   completedAt?: number;
+  /** Snapshot of the routine's exercises stored in the assignment row. */
+  exercisesJson?: import('@/types/workout').WorkoutExercise[];
 }
 
 export interface ClientNotification {

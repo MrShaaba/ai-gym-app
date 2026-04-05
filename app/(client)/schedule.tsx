@@ -7,10 +7,10 @@ import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { useAssignmentStore } from '@/store/assignmentStore';
 import { useWorkoutStore } from '@/store/workoutStore';
-import { useAuthStore } from '@/store/authStore';
-import { ROUTINES } from '@/data/routines';
+import { useUserId } from '@/hooks/useUserId';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
-import type { DayOfWeek } from '@/types/assignment';
+import type { DayOfWeek, Assignment } from '@/types/assignment';
+import type { WorkoutRoutine } from '@/types/workout';
 
 const DAYS: DayOfWeek[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const DAY_INDEX: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
@@ -19,7 +19,7 @@ const todayLabel = DAYS[(todayIndex + 6) % 7]; // convert Sun=0 to Mon-first
 
 export default function Schedule() {
   const router = useRouter();
-  const userId = useAuthStore((s) => s.user?.id);
+  const userId = useUserId();
   const allAssignments = useAssignmentStore((s) => s.assignments);
   const assignments = useMemo(
     () => allAssignments.filter((a) => a.clientId === userId),
@@ -35,9 +35,14 @@ export default function Schedule() {
     dayMap.set(day, active.filter((a) => a.scheduleDays.includes(day)));
   }
 
-  const handleStart = (routineName: string) => {
-    const routine = ROUTINES.find((r) => r.name === routineName);
-    if (!routine) return;
+  const handleStart = (assignment: Assignment) => {
+    if (!assignment.exercisesJson || assignment.exercisesJson.length === 0) return;
+    const routine: WorkoutRoutine = {
+      id: assignment.routineId,
+      name: assignment.routineName,
+      exercises: assignment.exercisesJson,
+      difficulty: 'intermediate',
+    };
     startWorkout(routine);
     router.push('/(workout)/session');
   };
@@ -92,7 +97,7 @@ export default function Schedule() {
                       {isToday && !activeSession && (
                         <TouchableOpacity
                           style={styles.startBtn}
-                          onPress={() => handleStart(a.routineName)}
+                          onPress={() => handleStart(a)}
                         >
                           <Ionicons name="play" size={18} color={colors.background} />
                         </TouchableOpacity>

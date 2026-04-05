@@ -1,5 +1,5 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { useMemo } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '@/components/ui/Screen';
@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/Badge';
 import { useTrainerClients } from '@/hooks/useTrainerClients';
 import { useAssignmentStore } from '@/store/assignmentStore';
 import { useAuthStore } from '@/store/authStore';
+import { fetchClientPrograms, endorseProgram, type ProgramRow } from '@/services/programs';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
 
 const statusColor: Record<string, string> = {
@@ -57,6 +58,38 @@ export default function ClientDetail() {
 
   const activeAssignments = assignments.filter((a) => a.status !== 'completed');
   const completedAssignments = assignments.filter((a) => a.status === 'completed');
+
+  // AI-generated programs for this client
+  const [clientPrograms, setClientPrograms] = useState<ProgramRow[]>([]);
+  const [endorsing, setEndorsing] = useState<string | null>(null);
+
+  const loadClientPrograms = useCallback(async () => {
+    if (!id) return;
+    try {
+      const all = await fetchClientPrograms(id);
+      setClientPrograms(all.filter((p) => p.source === 'ai' || p.source === 'ai_endorsed'));
+    } catch {
+      /* ignore */
+    }
+  }, [id]);
+
+  useEffect(() => {
+    loadClientPrograms();
+  }, [loadClientPrograms]);
+
+  const handleEndorse = async (programId: string) => {
+    if (!trainerId) return;
+    setEndorsing(programId);
+    try {
+      await endorseProgram(programId, trainerId);
+      Alert.alert('Endorsed', 'Program marked as trainer-endorsed.');
+      loadClientPrograms();
+    } catch (e: any) {
+      Alert.alert('Error', e.message ?? 'Failed to endorse');
+    } finally {
+      setEndorsing(null);
+    }
+  };
 
   return (
     <Screen>
@@ -107,6 +140,41 @@ export default function ClientDetail() {
           onPress={() => router.push({ pathname: '/(trainer)/assign', params: { clientId: client.clientId, clientName: client.clientName } })}
           style={styles.assignBtn}
         />
+
+        {/* AI Programs to Endorse */}
+        {clientPrograms.length > 0 && (
+          <>
+            <Text style={styles.sectionTitle}>
+              AI Programs ({clientPrograms.length})
+            </Text>
+            {clientPrograms.map((p) => (
+              <Card key={p.id} style={styles.assignmentCard}>
+                <View style={styles.assignmentHeader}>
+                  <View style={styles.assignmentInfo}>
+                    <Text style={styles.assignmentName}>{p.name}</Text>
+                    {p.description && (
+                      <Text style={styles.programLabel}>{p.description}</Text>
+                    )}
+                  </View>
+                  {p.source === 'ai_endorsed' ? (
+                    <Badge label="Endorsed" color="#4ADE80" />
+                  ) : (
+                    <TouchableOpacity
+                      style={styles.endorseBtn}
+                      onPress={() => handleEndorse(p.id)}
+                      disabled={endorsing === p.id}
+                    >
+                      <Ionicons name="checkmark-circle-outline" size={16} color={colors.accent} />
+                      <Text style={styles.endorseText}>
+                        {endorsing === p.id ? '…' : 'Endorse'}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </Card>
+            ))}
+          </>
+        )}
 
         {/* Active Assignments */}
         <Text style={styles.sectionTitle}>
@@ -328,5 +396,19 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     fontStyle: 'italic',
     flex: 1,
+  },
+  endorseBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: colors.accent + '15',
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.full,
+  },
+  endorseText: {
+    color: colors.accent,
+    fontSize: fontSize.xs,
+    fontWeight: '600',
   },
 });

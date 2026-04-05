@@ -14,6 +14,9 @@ interface AssignmentState {
   /** True while the initial DB fetch is running. */
   hydrating: boolean;
 
+  /** Clear all local state (call on logout). */
+  reset: () => void;
+
   /** Pull all assignments from Supabase for the given role + user. */
   hydrate: (role: 'trainer' | 'client', userId: string) => Promise<void>;
 
@@ -21,10 +24,12 @@ interface AssignmentState {
   createAssignment: (params: {
     trainerId: string;
     clientId: string;
+    routineId: string;
     routineName: string;
     scheduleDays: DayOfWeek[];
     note?: string;
     programName?: string;
+    exercisesJson?: unknown;
   }) => Promise<Assignment>;
   updateAssignmentStatus: (id: string, status: Assignment['status']) => Promise<void>;
 
@@ -41,6 +46,8 @@ export const useAssignmentStore = create<AssignmentState>()(
       assignments: [],
       notifications: [],
       hydrating: false,
+
+      reset: () => set({ assignments: [], notifications: [], hydrating: false }),
 
       hydrate: async (role, userId) => {
         set({ hydrating: true });
@@ -59,10 +66,12 @@ export const useAssignmentStore = create<AssignmentState>()(
         const newAssignment = await insertAssignment({
           trainerId: params.trainerId,
           clientId: params.clientId,
+          routineId: params.routineId,
           routineName: params.routineName,
           programName: params.programName,
           scheduleDays: params.scheduleDays,
           note: params.note,
+          exercisesJson: params.exercisesJson,
         });
 
         // Optimistic local update

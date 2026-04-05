@@ -6,6 +6,7 @@ import { Screen } from '@/components/ui/Screen';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { signIn } from '@/services/auth';
+import { getProfile } from '@/services/profiles';
 import { useAuthStore } from '@/store/authStore';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
 
@@ -22,9 +23,16 @@ export default function Login() {
     setBusy(true);
     try {
       const data = await signIn({ email, password });
-      // Eagerly update store so index.tsx sees isAuthenticated before redirect
-      useAuthStore.getState().setSession(data.session!);
-      router.replace('/');
+      const session = data.session!;
+      useAuthStore.getState().setSession(session);
+
+      // Fetch profile so the authoritative DB role is set before navigating
+      const profile = await getProfile(session.user.id);
+      if (profile) useAuthStore.getState().setProfile(profile);
+
+      // Navigate directly to the correct layout instead of going through index.tsx
+      const role = profile?.role ?? (session.user.user_metadata?.role as string);
+      router.replace(role === 'trainer' ? '/(trainer)/dashboard' : '/(client)/workout');
     } catch (e: any) {
       setError(e.message ?? 'Sign in failed');
     } finally {

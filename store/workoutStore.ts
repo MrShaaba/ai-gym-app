@@ -9,6 +9,9 @@ interface WorkoutState {
   history: CompletedWorkout[];
   restTimerEnd: number | null;
 
+  /** Clear all local state (call on logout). */
+  reset: () => void;
+
   /** Pull completed-workout history from Supabase. */
   hydrateHistory: (userId: string) => Promise<void>;
 
@@ -45,6 +48,8 @@ export const useWorkoutStore = create<WorkoutState>()(
       activeSession: null,
       history: [],
       restTimerEnd: null,
+
+      reset: () => set({ activeSession: null, history: [], restTimerEnd: null }),
 
       hydrateHistory: async (userId) => {
         try {

@@ -1,0 +1,286 @@
+import { useState, useCallback } from 'react';
+import { View, Text, StyleSheet, FlatList, Pressable, TextInput } from 'react-native';
+import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { Screen } from '@/components/ui/Screen';
+import { Card } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
+import { useTrainerSearch } from '@/hooks/useTrainerSearch';
+import { SPECIALTY_OPTIONS } from '@/types/marketplace';
+import type { TrainerPublicProfile } from '@/types/marketplace';
+import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
+
+export default function Discover() {
+  const router = useRouter();
+  const [query, setQuery] = useState('');
+  const [selectedSpecialty, setSelectedSpecialty] = useState<string | undefined>();
+  const { trainers, loading, refetch } = useTrainerSearch(query, selectedSpecialty ?? '');
+
+  const handleTrainerPress = (trainer: TrainerPublicProfile) => {
+    router.push({ pathname: '/(client)/trainer-profile', params: { id: trainer.id } });
+  };
+
+  const toggleSpecialty = (s: string) => {
+    setSelectedSpecialty((prev) => (prev === s ? undefined : s));
+  };
+
+  const renderStars = (rating: number) => {
+    const full = Math.floor(rating);
+    const half = rating - full >= 0.5;
+    const stars: string[] = [];
+    for (let i = 0; i < full; i++) stars.push('star');
+    if (half) stars.push('star-half');
+    while (stars.length < 5) stars.push('star-outline');
+    return stars;
+  };
+
+  const renderTrainer = useCallback(
+    ({ item }: { item: TrainerPublicProfile }) => (
+      <Pressable onPress={() => handleTrainerPress(item)}>
+        <Card style={styles.trainerCard}>
+          <View style={styles.cardTop}>
+            <View style={styles.avatarCircle}>
+              <Text style={styles.avatarInitials}>
+                {item.fullName
+                  .split(' ')
+                  .map((w) => w[0])
+                  .join('')
+                  .toUpperCase()
+                  .slice(0, 2)}
+              </Text>
+            </View>
+            <View style={styles.cardInfo}>
+              <Text style={styles.trainerName}>{item.fullName}</Text>
+              {item.username && (
+                <Text style={styles.trainerUsername}>@{item.username}</Text>
+              )}
+              <View style={styles.starRow}>
+                {renderStars(item.ratingAvg).map((icon, i) => (
+                  <Ionicons
+                    key={i}
+                    name={icon as any}
+                    size={14}
+                    color={colors.warning}
+                  />
+                ))}
+                <Text style={styles.ratingText}>
+                  {item.ratingAvg > 0 ? item.ratingAvg.toFixed(1) : '—'} ({item.ratingCount})
+                </Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+          </View>
+          {item.specialties.length > 0 && (
+            <View style={styles.specRow}>
+              {item.specialties.slice(0, 3).map((s) => (
+                <Badge key={s} label={s} />
+              ))}
+              {item.specialties.length > 3 && (
+                <Text style={styles.moreText}>+{item.specialties.length - 3}</Text>
+              )}
+            </View>
+          )}
+          {item.experienceYears > 0 && (
+            <Text style={styles.expText}>
+              {item.experienceYears} year{item.experienceYears !== 1 ? 's' : ''} experience
+            </Text>
+          )}
+        </Card>
+      </Pressable>
+    ),
+    [],
+  );
+
+  return (
+    <Screen>
+      <View style={styles.container}>
+        <Text style={styles.heading}>Discover Trainers</Text>
+
+        <View style={styles.searchBar}>
+          <Ionicons name="search" size={18} color={colors.textMuted} />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search by name or username…"
+            placeholderTextColor={colors.textMuted}
+            value={query}
+            onChangeText={setQuery}
+            autoCapitalize="none"
+            returnKeyType="search"
+          />
+          {query.length > 0 && (
+            <Pressable onPress={() => setQuery('')}>
+              <Ionicons name="close-circle" size={18} color={colors.textMuted} />
+            </Pressable>
+          )}
+        </View>
+
+        <FlatList
+          horizontal
+          data={SPECIALTY_OPTIONS as unknown as string[]}
+          keyExtractor={(item) => item}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterRow}
+          renderItem={({ item }) => (
+            <Pressable
+              onPress={() => toggleSpecialty(item)}
+              style={[
+                styles.filterChip,
+                selectedSpecialty === item && styles.filterChipActive,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.filterChipText,
+                  selectedSpecialty === item && styles.filterChipTextActive,
+                ]}
+              >
+                {item}
+              </Text>
+            </Pressable>
+          )}
+        />
+
+        <FlatList
+          data={trainers}
+          keyExtractor={(item) => item.id}
+          renderItem={renderTrainer}
+          contentContainerStyle={styles.list}
+          ListEmptyComponent={
+            <View style={styles.empty}>
+              <Ionicons name="people-outline" size={40} color={colors.textMuted} />
+              <Text style={styles.emptyText}>
+                {loading ? 'Searching…' : 'No trainers found'}
+              </Text>
+            </View>
+          }
+        />
+      </View>
+    </Screen>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    padding: spacing.lg,
+    paddingBottom: 0,
+  },
+  heading: {
+    color: colors.textPrimary,
+    fontSize: fontSize.xl,
+    fontWeight: '700',
+    marginBottom: spacing.md,
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.md,
+    gap: spacing.sm,
+  },
+  searchInput: {
+    flex: 1,
+    color: colors.textPrimary,
+    fontSize: fontSize.md,
+    paddingVertical: spacing.md,
+  },
+  filterRow: {
+    gap: spacing.sm,
+    paddingBottom: spacing.md,
+  },
+  filterChip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: borderRadius.full,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  filterChipActive: {
+    backgroundColor: colors.accent + '20',
+    borderColor: colors.accent,
+  },
+  filterChipText: {
+    color: colors.textSecondary,
+    fontSize: fontSize.xs,
+  },
+  filterChipTextActive: {
+    color: colors.accent,
+    fontWeight: '600',
+  },
+  list: {
+    paddingBottom: spacing.xxl,
+    gap: spacing.md,
+  },
+  trainerCard: {
+    gap: spacing.sm,
+  },
+  cardTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  avatarCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.accent + '20',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarInitials: {
+    color: colors.accent,
+    fontSize: fontSize.md,
+    fontWeight: '700',
+  },
+  cardInfo: {
+    flex: 1,
+  },
+  trainerName: {
+    color: colors.textPrimary,
+    fontSize: fontSize.md,
+    fontWeight: '600',
+  },
+  trainerUsername: {
+    color: colors.textMuted,
+    fontSize: fontSize.xs,
+  },
+  starRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    marginTop: 2,
+  },
+  ratingText: {
+    color: colors.textSecondary,
+    fontSize: fontSize.xs,
+    marginLeft: spacing.xs,
+  },
+  specRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+  },
+  moreText: {
+    color: colors.textMuted,
+    fontSize: fontSize.xs,
+    alignSelf: 'center',
+  },
+  expText: {
+    color: colors.textMuted,
+    fontSize: fontSize.xs,
+  },
+  empty: {
+    alignItems: 'center',
+    paddingTop: spacing.xxl,
+    gap: spacing.md,
+  },
+  emptyText: {
+    color: colors.textMuted,
+    fontSize: fontSize.md,
+  },
+});

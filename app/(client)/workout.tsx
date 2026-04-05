@@ -1,5 +1,5 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { useMemo } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, FlatList } from 'react-native';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '@/components/ui/Screen';
@@ -7,9 +7,10 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { useWorkoutStore } from '@/store/workoutStore';
 import { useAssignmentStore } from '@/store/assignmentStore';
-import { useAuthStore } from '@/store/authStore';
-import { ROUTINES } from '@/data/routines';
+import { useUserId } from '@/hooks/useUserId';
+import { fetchClientRoutines, routineRowToWorkoutRoutine, type RoutineRow } from '@/services/programs';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
+import type { WorkoutRoutine } from '@/types/workout';
 
 const now = new Date();
 const startOfWeek = new Date(now);
@@ -31,7 +32,7 @@ const todayLabel = DAY_LABELS[now.getDay()];
 
 export default function Workout() {
   const router = useRouter();
-  const userId = useAuthStore((s) => s.user?.id);
+  const userId = useUserId();
   const startWorkout = useWorkoutStore((s) => s.startWorkout);
   const activeSession = useWorkoutStore((s) => s.activeSession);
   const notifications = useAssignmentStore((s) => s.notifications);
@@ -39,24 +40,54 @@ export default function Workout() {
   const markAllRead = useAssignmentStore((s) => s.markAllNotificationsRead);
   const unreadCount = useMemo(() => notifications.filter((n) => !n.read).length, [notifications]);
 
-  // Derive today's routines from assignments (fallback to local catalog)
-  const todayRoutines = useMemo(() => {
+  const [pickerVisible, setPickerVisible] = useState(false);
+  const [selectedRoutine, setSelectedRoutine] = useState<WorkoutRoutine | null>(null);
+  const [libraryRoutines, setLibraryRoutines] = useState<RoutineRow[]>([]);
+  const [loadingRoutines, setLoadingRoutines] = useState(false);
+
+  // Fetch all client-accessible routines (own + trainer's programs)
+  const loadRoutines = useCallback(async () => {
+    if (!userId) return;
+    setLoadingRoutines(true);
+    try {
+      const rows = await fetchClientRoutines(userId);
+      setLibraryRoutines(rows);
+    } catch {
+      /* ignore */
+    } finally {
+      setLoadingRoutines(false);
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    loadRoutines();
+  }, [loadRoutines]);
+
+  // Derive today's routines from assignments
+  const todayRoutines = useMemo((): WorkoutRoutine[] => {
     const myAssignments = allAssignments.filter(
       (a) => a.clientId === userId && a.status !== 'completed' && a.scheduleDays.includes(todayLabel as any),
     );
-    if (myAssignments.length > 0) {
-      return myAssignments
-        .map((a) => ROUTINES.find((r) => r.name === a.routineName))
-        .filter(Boolean) as typeof ROUTINES;
-    }
-    return ROUTINES.slice(0, 3);
+    return myAssignments
+      .filter((a) => a.exercisesJson && a.exercisesJson.length > 0)
+      .map((a) => ({
+        id: a.routineId,
+        name: a.routineName,
+        exercises: a.exercisesJson!,
+        difficulty: 'intermediate' as const,
+        assignedBy: a.programName,
+      }));
   }, [allAssignments, userId]);
 
-  const handlePlay = (routineName: string) => {
-    const routine = ROUTINES.find((r) => r.name === routineName);
-    if (!routine) return;
+  const handlePlay = (routine: WorkoutRoutine) => {
     startWorkout(routine);
     router.push('/(workout)/session');
+  };
+
+  const handleSelectRoutine = (row: RoutineRow) => {
+    const routine = routineRowToWorkoutRoutine(row);
+    setSelectedRoutine(routine);
+    setPickerVisible(false);
   };
 
   const handleResume = () => {
@@ -106,7 +137,58 @@ export default function Workout() {
           </TouchableOpacity>
         )}
 
+        {/* Select a routine row */}
+        <View style={styles.routinePickerRow}>
+          <TouchableOpacity style={styles.routineDropdown} onPress={() => setPickerVisible(true)}>
+            <Text style={styles.routineDropdownText}>
+              {selectedRoutine ? selectedRoutine.name : 'Select a routine'}
+            </Text>
+            <Ionicons name="chevron-down" size={18} color={colors.textSecondary} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push('/(client)/programs')}>
+            <Text style={styles.routinesLink}>Routines</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Start selected routine */}
+        {selectedRoutine && (
+          <Card style={styles.selectedRoutineCard}>
+            <View style={styles.routineRow}>
+              <View style={styles.routineInfo}>
+                <Text style={styles.routineName}>{selectedRoutine.name}</Text>
+                <Text style={styles.routineMeta}>
+                  {selectedRoutine.exercises.length} exercises  ·  {selectedRoutine.durationMinutes ?? '—'} min
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.playBtn}
+                onPress={() => handlePlay(selectedRoutine)}
+                disabled={!!activeSession}
+              >
+                <Ionicons name="play" size={20} color={colors.background} />
+              </TouchableOpacity>
+            </View>
+          </Card>
+        )}
+
+        {!selectedRoutine && !activeSession && (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyTitle}>Hey there!</Text>
+            <Text style={styles.emptySubtitle}>
+              You've worked out <Text style={{ fontWeight: '700' }}>0 times</Text> so far this week. Time to get started!
+            </Text>
+          </View>
+        )}
+
         <Text style={styles.sectionTitle}>Today's Routines</Text>
+
+        {todayRoutines.length === 0 && (
+          <Card style={{ marginBottom: spacing.md }}>
+            <Text style={{ color: colors.textMuted, textAlign: 'center', paddingVertical: spacing.md }}>
+              No workouts scheduled for today.
+            </Text>
+          </Card>
+        )}
 
         {todayRoutines.map((routine) => (
           <Card key={routine.id} accent style={styles.routineCard}>
@@ -117,18 +199,18 @@ export default function Workout() {
                   {[...new Set(routine.exercises.flatMap((e) => e.exercise.muscleGroups))].slice(0, 3).join(', ')}
                 </Text>
                 <Text style={styles.routineMeta}>
-                  {routine.exercises.length} exercises  ·  {routine.durationMinutes} min
+                  {routine.exercises.length} exercises  ·  {routine.durationMinutes ?? '—'} min
                 </Text>
                 {routine.assignedBy && (
                   <View style={styles.trainerBadge}>
                     <Ionicons name="person-circle-outline" size={12} color={colors.accent} />
-                    <Text style={styles.trainerText}>Assigned by {routine.assignedBy}</Text>
+                    <Text style={styles.trainerText}>{routine.assignedBy}</Text>
                   </View>
                 )}
               </View>
               <TouchableOpacity
                 style={styles.playBtn}
-                onPress={() => handlePlay(routine.name)}
+                onPress={() => handlePlay(routine)}
                 disabled={!!activeSession}
               >
                 <Ionicons name="play" size={20} color={colors.background} />
@@ -142,18 +224,53 @@ export default function Workout() {
           <Button
             title="Generate Workout"
             icon="sparkles-outline"
-            onPress={() => {}}
-            style={styles.actionBtn}
-          />
-          <Button
-            title="Browse Routines"
-            icon="library-outline"
-            variant="secondary"
-            onPress={() => {}}
+            onPress={() => router.push('/(client)/generate')}
             style={styles.actionBtn}
           />
         </View>
       </ScrollView>
+
+      {/* Bottom-sheet routine picker */}
+      <Modal
+        visible={pickerVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setPickerVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setPickerVisible(false)}
+        />
+        <View style={styles.modalSheet}>
+          <View style={styles.modalHandle} />
+          <Text style={styles.modalTitle}>Select a routine</Text>
+
+          {loadingRoutines ? (
+            <Text style={styles.modalEmpty}>Loading…</Text>
+          ) : libraryRoutines.length === 0 ? (
+            <Text style={styles.modalEmpty}>No routines found. Create a program first.</Text>
+          ) : (
+            <FlatList
+              data={libraryRoutines}
+              keyExtractor={(item) => item.id}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.modalItem}
+                  onPress={() => handleSelectRoutine(item)}
+                >
+                  <Text style={styles.modalItemName}>{item.name}</Text>
+                  <Text style={styles.modalItemMeta}>
+                    {(item.exercises_json ?? []).length} EXERCISES
+                  </Text>
+                </TouchableOpacity>
+              )}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: spacing.xxl }}
+            />
+          )}
+        </View>
+      </Modal>
     </Screen>
   );
 }
@@ -342,5 +459,104 @@ const styles = StyleSheet.create({
   },
   actionBtn: {
     // full width default
+  },
+  // Routine picker row
+  routinePickerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing.lg,
+  },
+  routineDropdown: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.md,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    marginRight: spacing.md,
+  },
+  routineDropdownText: {
+    color: colors.textPrimary,
+    fontSize: fontSize.md,
+    fontWeight: '500',
+  },
+  routinesLink: {
+    color: colors.textSecondary,
+    fontSize: fontSize.md,
+    fontWeight: '600',
+  },
+  selectedRoutineCard: {
+    marginBottom: spacing.lg,
+  },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: spacing.xl,
+    marginBottom: spacing.lg,
+  },
+  emptyTitle: {
+    color: colors.textPrimary,
+    fontSize: fontSize.xl,
+    fontWeight: '700',
+    marginBottom: spacing.sm,
+  },
+  emptySubtitle: {
+    color: colors.textMuted,
+    fontSize: fontSize.md,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  // Modal / bottom sheet
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  modalSheet: {
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    maxHeight: '65%',
+  },
+  modalHandle: {
+    width: 40,
+    height: 4,
+    backgroundColor: colors.textMuted,
+    borderRadius: 2,
+    alignSelf: 'center',
+    marginBottom: spacing.md,
+  },
+  modalTitle: {
+    color: colors.textPrimary,
+    fontSize: fontSize.lg,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: spacing.lg,
+  },
+  modalEmpty: {
+    color: colors.textMuted,
+    fontSize: fontSize.md,
+    textAlign: 'center',
+    padding: spacing.xl,
+  },
+  modalItem: {
+    paddingVertical: spacing.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  modalItemName: {
+    color: colors.textPrimary,
+    fontSize: fontSize.md,
+    fontWeight: '600',
+  },
+  modalItemMeta: {
+    color: colors.textMuted,
+    fontSize: fontSize.xs,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+    marginTop: spacing.xs,
   },
 });

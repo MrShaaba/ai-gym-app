@@ -1,42 +1,56 @@
-import { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert } from 'react-native';
+import { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '@/components/ui/Screen';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { DayPicker } from '@/components/ui/DayPicker';
-import { ROUTINES } from '@/data/routines';
+import { fetchTrainerRoutines, type RoutineRow } from '@/services/programs';
 import { useAssignmentStore } from '@/store/assignmentStore';
 import { useAuthStore } from '@/store/authStore';
+import { useUserId } from '@/hooks/useUserId';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
 import type { DayOfWeek } from '@/types/assignment';
 
 export default function Assign() {
   const { clientId, clientName } = useLocalSearchParams<{ clientId: string; clientName: string }>();
   const router = useRouter();
-  const trainerId = useAuthStore((s) => s.user?.id);
+  const trainerId = useUserId();
   const trainerName = useAuthStore((s) => s.profile?.full_name);
   const createAssignment = useAssignmentStore((s) => s.createAssignment);
 
+  const [routines, setRoutines] = useState<RoutineRow[]>([]);
+  const [loadingRoutines, setLoadingRoutines] = useState(true);
   const [selectedRoutineId, setSelectedRoutineId] = useState<string | null>(null);
   const [selectedDays, setSelectedDays] = useState<DayOfWeek[]>([]);
   const [note, setNote] = useState('');
 
-  const selectedRoutine = ROUTINES.find((r) => r.id === selectedRoutineId);
+  useEffect(() => {
+    if (!trainerId) return;
+    setLoadingRoutines(true);
+    fetchTrainerRoutines(trainerId)
+      .then(setRoutines)
+      .catch(() => {})
+      .finally(() => setLoadingRoutines(false));
+  }, [trainerId]);
+
+  const selectedRoutine = routines.find((r) => r.id === selectedRoutineId);
   const canSubmit = selectedRoutineId && selectedDays.length > 0;
 
   const handleAssign = async () => {
-    if (!selectedRoutineId || !clientId || !trainerId) return;
+    if (!selectedRoutine || !clientId || !trainerId) return;
 
     try {
       await createAssignment({
         trainerId,
         clientId,
-        routineName: selectedRoutine?.name ?? 'Unknown Routine',
+        routineId: selectedRoutine.id,
+        routineName: selectedRoutine.name,
         scheduleDays: selectedDays,
         note: note.trim() || undefined,
         programName: trainerName ? `${trainerName}'s Program` : undefined,
+        exercisesJson: selectedRoutine.exercises_json,
       });
 
       Alert.alert(
@@ -63,8 +77,21 @@ export default function Assign() {
         {/* Step 1: Pick Routine */}
         <Text style={styles.sectionTitle}>1. Select Routine</Text>
 
-        {ROUTINES.map((routine) => {
+        {loadingRoutines && (
+          <ActivityIndicator color={colors.accent} style={{ marginVertical: spacing.md }} />
+        )}
+
+        {!loadingRoutines && routines.length === 0 && (
+          <Card style={{ marginBottom: spacing.md }}>
+            <Text style={{ color: colors.textMuted, textAlign: 'center', paddingVertical: spacing.md }}>
+              No routines yet. Create a program with routines first.
+            </Text>
+          </Card>
+        )}
+
+        {routines.map((routine) => {
           const isSelected = selectedRoutineId === routine.id;
+          const exerciseCount = routine.exercises_json?.length ?? 0;
           return (
             <TouchableOpacity
               key={routine.id}
@@ -75,7 +102,7 @@ export default function Assign() {
                   <View style={styles.routineInfo}>
                     <Text style={styles.routineName}>{routine.name}</Text>
                     <Text style={styles.routineMeta}>
-                      {routine.exercises.length} exercises  ·  {routine.durationMinutes} min  ·  {routine.difficulty}
+                      {exerciseCount} exercises  ·  {routine.duration_minutes} min  ·  {routine.difficulty}
                     </Text>
                   </View>
                   <View style={[styles.radioOuter, isSelected && styles.radioOuterActive]}>

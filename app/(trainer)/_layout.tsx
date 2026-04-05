@@ -54,6 +54,10 @@ export default function TrainerLayout() {
       />
       <Tabs.Screen name="client-detail" options={{ href: null, tabBarStyle: { display: 'none' } }} />
       <Tabs.Screen name="assign" options={{ href: null, tabBarStyle: { display: 'none' } }} />
+      <Tabs.Screen name="program-detail" options={{ href: null, tabBarStyle: { display: 'none' } }} />
+      <Tabs.Screen name="create-routine" options={{ href: null, tabBarStyle: { display: 'none' } }} />
+      <Tabs.Screen name="invite-client" options={{ href: null, tabBarStyle: { display: 'none' } }} />
+      <Tabs.Screen name="edit-profile" options={{ href: null, tabBarStyle: { display: 'none' } }} />
     </Tabs>
   );
 }
