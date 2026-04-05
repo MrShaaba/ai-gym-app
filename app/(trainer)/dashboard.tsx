@@ -1,31 +1,41 @@
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '@/components/ui/Screen';
 import { Card } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
+import { CLIENTS } from '@/data/clients';
+import { useAssignmentStore } from '@/store/assignmentStore';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
 
 const hour = new Date().getHours();
 const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
 
-const quickStats = [
-  { label: 'Active Clients', value: '12', icon: 'people-outline' as const },
-  { label: 'Sessions Today', value: '4', icon: 'calendar-outline' as const },
-  { label: 'Programs', value: '8', icon: 'clipboard-outline' as const },
-  { label: 'Messages', value: '3', icon: 'chatbubbles-outline' as const },
-];
-
-const upcomingSessions = [
-  { client: 'Sarah M.', time: '10:00 AM', type: 'Upper Body', status: 'confirmed' as const },
-  { client: 'James K.', time: '11:30 AM', type: 'HIIT', status: 'confirmed' as const },
-  { client: 'Lisa T.', time: '2:00 PM', type: 'Mobility', status: 'pending' as const },
-];
-
-const statusColor = {
-  confirmed: colors.accent,
-  pending: '#FACC15',
-};
-
 export default function Dashboard() {
+  const router = useRouter();
+  const assignments = useAssignmentStore((s) => s.assignments);
+
+  const activeClients = CLIENTS.filter((c) => c.active).length;
+  const activeAssignments = assignments.filter((a) => a.status !== 'completed').length;
+  const recentAssignments = assignments
+    .filter((a) => a.status !== 'completed')
+    .slice(0, 3);
+
+  const quickStats = [
+    { label: 'Active Clients', value: String(activeClients), icon: 'people-outline' as const },
+    { label: 'Active Plans', value: String(activeAssignments), icon: 'clipboard-outline' as const },
+    { label: 'Programs', value: '5', icon: 'barbell-outline' as const },
+    { label: 'Messages', value: '3', icon: 'chatbubbles-outline' as const },
+  ];
+
+  const getClientName = (clientId: string) =>
+    CLIENTS.find((c) => c.clientId === clientId)?.clientName ?? 'Unknown';
+
+  const statusColor: Record<string, string> = {
+    assigned: '#60A5FA',
+    in_progress: '#FACC15',
+  };
+
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.container}>
@@ -44,25 +54,32 @@ export default function Dashboard() {
           ))}
         </View>
 
-        <Text style={styles.sectionTitle}>Today's Sessions</Text>
+        <Text style={styles.sectionTitle}>Active Assignments</Text>
 
-        {upcomingSessions.map((session) => (
-          <Card key={session.client} style={styles.sessionCard}>
-            <View style={styles.sessionRow}>
-              <View style={styles.sessionInfo}>
-                <Text style={styles.sessionClient}>{session.client}</Text>
-                <Text style={styles.sessionType}>{session.type}</Text>
-              </View>
-              <View style={styles.sessionRight}>
-                <Text style={styles.sessionTime}>{session.time}</Text>
-                <View style={[styles.statusBadge, { backgroundColor: statusColor[session.status] + '20' }]}>
-                  <Text style={[styles.statusText, { color: statusColor[session.status] }]}>
-                    {session.status}
-                  </Text>
+        {recentAssignments.length === 0 && (
+          <Card style={styles.sessionCard}>
+            <Text style={styles.emptyText}>No active assignments yet.</Text>
+          </Card>
+        )}
+
+        {recentAssignments.map((a) => (
+          <TouchableOpacity
+            key={a.id}
+            onPress={() => router.push({ pathname: '/(trainer)/client-detail', params: { id: a.clientId } })}
+          >
+            <Card style={styles.sessionCard}>
+              <View style={styles.sessionRow}>
+                <View style={styles.sessionInfo}>
+                  <Text style={styles.sessionClient}>{getClientName(a.clientId)}</Text>
+                  <Text style={styles.sessionType}>{a.routineName}</Text>
+                </View>
+                <View style={styles.sessionRight}>
+                  <Text style={styles.sessionDays}>{a.scheduleDays.join(', ')}</Text>
+                  <Badge label={a.status.replace('_', ' ')} color={statusColor[a.status] ?? colors.accent} size="sm" />
                 </View>
               </View>
-            </View>
-          </Card>
+            </Card>
+          </TouchableOpacity>
         ))}
       </ScrollView>
     </Screen>
@@ -151,20 +168,14 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     gap: spacing.xs,
   },
-  sessionTime: {
-    color: colors.accent,
-    fontSize: fontSize.md,
-    fontWeight: '600',
+  sessionDays: {
+    color: colors.textMuted,
+    fontSize: fontSize.xs,
   },
-  statusBadge: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: borderRadius.full,
-  },
-  statusText: {
-    fontSize: 10,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+  emptyText: {
+    color: colors.textMuted,
+    fontSize: fontSize.sm,
+    textAlign: 'center',
+    paddingVertical: spacing.md,
   },
 });

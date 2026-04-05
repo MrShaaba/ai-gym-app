@@ -52,6 +52,8 @@ export default function TrainerLayout() {
           ),
         }}
       />
+      <Tabs.Screen name="client-detail" options={{ href: null, tabBarStyle: { display: 'none' } }} />
+      <Tabs.Screen name="assign" options={{ href: null, tabBarStyle: { display: 'none' } }} />
     </Tabs>
   );
 }

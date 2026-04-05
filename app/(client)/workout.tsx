@@ -1,10 +1,12 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { useMemo } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '@/components/ui/Screen';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { useWorkoutStore } from '@/store/workoutStore';
+import { useAssignmentStore } from '@/store/assignmentStore';
 import { ROUTINES } from '@/data/routines';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
 
@@ -27,6 +29,9 @@ export default function Workout() {
   const router = useRouter();
   const startWorkout = useWorkoutStore((s) => s.startWorkout);
   const activeSession = useWorkoutStore((s) => s.activeSession);
+  const notifications = useAssignmentStore((s) => s.notifications);
+  const markAllRead = useAssignmentStore((s) => s.markAllNotificationsRead);
+  const unreadCount = useMemo(() => notifications.filter((n) => !n.read).length, [notifications]);
 
   const handlePlay = (routineId: string) => {
     const routine = ROUTINES.find((r) => r.id === routineId);
@@ -56,6 +61,18 @@ export default function Workout() {
             </View>
           ))}
         </View>
+
+        {unreadCount > 0 && (
+          <TouchableOpacity style={styles.notifBanner} onPress={markAllRead}>
+            <View style={styles.notifLeft}>
+              <Ionicons name="notifications" size={18} color="#60A5FA" />
+              <Text style={styles.notifText}>
+                {unreadCount} new notification{unreadCount !== 1 ? 's' : ''} from your trainer
+              </Text>
+            </View>
+            <Text style={styles.notifDismiss}>Dismiss</Text>
+          </TouchableOpacity>
+        )}
 
         {activeSession && (
           <TouchableOpacity style={styles.resumeBanner} onPress={handleResume}>
@@ -183,6 +200,33 @@ const styles = StyleSheet.create({
   },
   dayDotActive: {
     backgroundColor: colors.accent,
+  },
+  notifBanner: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#60A5FA' + '15',
+    borderColor: '#60A5FA' + '40',
+    borderWidth: 1,
+    borderRadius: borderRadius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  notifLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    flex: 1,
+  },
+  notifText: {
+    color: colors.textPrimary,
+    fontSize: fontSize.sm,
+    flex: 1,
+  },
+  notifDismiss: {
+    color: '#60A5FA',
+    fontSize: fontSize.xs,
+    fontWeight: '600',
   },
   sectionTitle: {
     color: colors.textSecondary,

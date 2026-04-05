@@ -1,8 +1,11 @@
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { useMemo } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '@/components/ui/Screen';
 import { Card } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { useAssignmentStore } from '@/store/assignmentStore';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
 
 const mockPrograms = [
@@ -19,6 +22,29 @@ const difficultyColor: Record<string, string> = {
 };
 
 export default function Programs() {
+  const allAssignments = useAssignmentStore((s) => s.assignments);
+  const assignments = useMemo(
+    () => allAssignments.filter((a) => a.clientId === 'cl-05'),
+    [allAssignments],
+  );
+
+  // map programName → best status (in_progress > assigned > completed)
+  const programStatus = new Map<string, string>();
+  for (const a of assignments) {
+    if (a.programName) {
+      const existing = programStatus.get(a.programName);
+      if (!existing || a.status === 'in_progress' || (a.status === 'assigned' && existing === 'completed')) {
+        programStatus.set(a.programName, a.status);
+      }
+    }
+  }
+
+  const assignmentStatusColor: Record<string, string> = {
+    assigned: '#60A5FA',
+    in_progress: '#FACC15',
+    completed: '#4ADE80',
+  };
+
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.container}>
@@ -39,6 +65,13 @@ export default function Programs() {
                     <Ionicons name="person-circle-outline" size={12} color={colors.accent} />
                     <Text style={styles.trainerText}>Assigned by {p.assignedBy}</Text>
                   </View>
+                )}
+                {programStatus.has(p.name) && (
+                  <Badge
+                    label={programStatus.get(p.name)!.replace('_', ' ')}
+                    color={assignmentStatusColor[programStatus.get(p.name)!] ?? colors.accent}
+                    size="sm"
+                  />
                 )}
               </View>
               <View style={[styles.badge, { backgroundColor: difficultyColor[p.difficulty] + '20' }]}>

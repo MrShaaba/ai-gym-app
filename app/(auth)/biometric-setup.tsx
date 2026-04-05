@@ -12,27 +12,29 @@ export default function BiometricSetup() {
   const router = useRouter();
   const login = useAuthStore((s) => s.login);
   const pendingRole = useAuthStore((s) => s.pendingRole);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const [supported, setSupported] = useState<boolean | null>(null);
 
   useEffect(() => {
     LocalAuthentication.hasHardwareAsync().then(setSupported);
   }, []);
 
-  const handleEnable = async () => {
-    const result = await LocalAuthentication.authenticateAsync({
-      promptMessage: 'Enable biometric login',
-      fallbackLabel: 'Use passcode',
-    });
+  const proceed = () => {
     const role = pendingRole ?? 'client';
-    login(role);
+    // If a Supabase session exists, store already knows the role. Otherwise fall back.
+    if (!isAuthenticated) login(role);
     router.replace(role === 'trainer' ? '/(trainer)/dashboard' : '/(client)/workout');
   };
 
-  const handleSkip = () => {
-    const role = pendingRole ?? 'client';
-    login(role);
-    router.replace(role === 'trainer' ? '/(trainer)/dashboard' : '/(client)/workout');
+  const handleEnable = async () => {
+    await LocalAuthentication.authenticateAsync({
+      promptMessage: 'Enable biometric login',
+      fallbackLabel: 'Use passcode',
+    });
+    proceed();
   };
+
+  const handleSkip = () => proceed();
 
   return (
     <Screen style={styles.screen}>

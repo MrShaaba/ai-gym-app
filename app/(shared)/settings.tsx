@@ -6,6 +6,7 @@ import { Screen } from '@/components/ui/Screen';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { useAuthStore } from '@/store/authStore';
+import { signOut } from '@/services/auth';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
@@ -57,7 +58,12 @@ export default function Settings() {
     setToggles((prev) => ({ ...prev, [key]: !prev[key] }));
   }, []);
 
-  const handleSignOut = () => {
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+    } catch {
+      // fall through — logout store anyway
+    }
     logout();
     router.replace('/');
   };
@@ -97,7 +103,7 @@ export default function Settings() {
 
         <Button title="Sign Out" icon="log-out-outline" variant="outline" onPress={handleSignOut} style={styles.signOut} />
 
-        <Text style={styles.version}>AI Gym v0.3.0 · Phase 3</Text>
+        <Text style={styles.version}>AI Gym v0.5.0 · Phase 5</Text>
       </ScrollView>
     </Screen>
   );

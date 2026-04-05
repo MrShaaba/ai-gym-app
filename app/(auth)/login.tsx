@@ -1,13 +1,34 @@
+import { useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '@/components/ui/Screen';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { signIn } from '@/services/auth';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
 
 export default function Login() {
   const router = useRouter();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const handleSignIn = async () => {
+    setError('');
+    if (!email || !password) { setError('Email and password are required.'); return; }
+    setBusy(true);
+    try {
+      await signIn({ email, password });
+      // useSession listener will update authStore → index.tsx will redirect
+      router.replace('/');
+    } catch (e: any) {
+      setError(e.message ?? 'Sign in failed');
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <Screen style={styles.screen}>
@@ -21,10 +42,11 @@ export default function Login() {
       </View>
 
       <View style={styles.form}>
-        <Input label="Email" placeholder="you@example.com" keyboardType="email-address" autoCapitalize="none" />
-        <Input label="Password" placeholder="Enter your password" secureTextEntry />
+        <Input label="Email" placeholder="you@example.com" keyboardType="email-address" autoCapitalize="none" value={email} onChangeText={setEmail} />
+        <Input label="Password" placeholder="Enter your password" secureTextEntry value={password} onChangeText={setPassword} />
+        {error ? <Text style={styles.error}>{error}</Text> : null}
         <Text style={styles.forgot}>Forgot Password?</Text>
-        <Button title="Sign In" onPress={() => router.push('/(auth)/otp-verify')} />
+        <Button title={busy ? 'Signing in…' : 'Sign In'} onPress={handleSignIn} disabled={busy} />
       </View>
 
       <View style={styles.divider}>
@@ -104,6 +126,11 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     fontWeight: '600',
     textAlign: 'right',
+  },
+  error: {
+    color: '#ef4444',
+    fontSize: fontSize.sm,
+    textAlign: 'center',
   },
   divider: {
     flexDirection: 'row',

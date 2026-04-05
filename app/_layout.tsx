@@ -4,8 +4,11 @@ import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as SystemUI from 'expo-system-ui';
 import { colors } from '@/config/theme';
+import { useSession } from '@/hooks/useSession';
 
 export default function RootLayout() {
+  useSession();
+
   useEffect(() => {
     SystemUI.setBackgroundColorAsync(colors.background);
   }, []);
