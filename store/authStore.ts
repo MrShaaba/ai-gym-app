@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Session, User } from '@supabase/supabase-js';
 import type { UserRole } from '@/types/user';
 import type { Profile } from '@/services/profiles';
+import { signOut } from '@/services/auth';
 
 const ONBOARDED_KEY = 'ai-gym:hasOnboarded';
 
@@ -51,14 +52,16 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   login: (role) => set({ isAuthenticated: true, role, pendingRole: null }),
 
-  logout: () =>
+  logout: () => {
+    signOut().catch(() => {}); // fire-and-forget; clears server session
     set({
       isAuthenticated: false,
       role: null,
       pendingRole: null,
       user: null,
       profile: null,
-    }),
+    });
+  },
 
   setPendingRole: (role) => set({ pendingRole: role }),
 

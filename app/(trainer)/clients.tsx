@@ -4,25 +4,28 @@ import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '@/components/ui/Screen';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
-import { CLIENTS } from '@/data/clients';
+import { useTrainerClients } from '@/hooks/useTrainerClients';
 import { useAssignmentStore } from '@/store/assignmentStore';
+import { useAuthStore } from '@/store/authStore';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
 
 export default function Clients() {
   const router = useRouter();
+  const userId = useAuthStore((s) => s.user?.id);
+  const { clients, loading } = useTrainerClients(userId);
   const assignments = useAssignmentStore((s) => s.assignments);
 
   const getActiveCount = (clientId: string) =>
     assignments.filter((a) => a.clientId === clientId && a.status !== 'completed').length;
 
-  const active = CLIENTS.filter((c) => c.active);
-  const inactive = CLIENTS.filter((c) => !c.active);
+  const active = clients.filter((c) => c.active);
+  const inactive = clients.filter((c) => !c.active);
 
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.title}>Clients</Text>
-        <Text style={styles.subtitle}>{CLIENTS.length} total  ·  {active.length} active</Text>
+        <Text style={styles.subtitle}>{clients.length} total  ·  {active.length} active</Text>
 
         <Text style={styles.sectionTitle}>Active ({active.length})</Text>
         {active.map((client) => {

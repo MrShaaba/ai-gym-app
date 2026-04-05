@@ -1,7 +1,15 @@
 import { useEffect } from 'react';
 import { useAuthStore } from '@/store/authStore';
+import { useAssignmentStore } from '@/store/assignmentStore';
+import { useWorkoutStore } from '@/store/workoutStore';
 import { getSession, onAuthStateChange } from '@/services/auth';
 import { getProfile } from '@/services/profiles';
+
+/** Hydrate assignment + workout stores once a profile is known. */
+function hydrateStores(userId: string, role: 'client' | 'trainer') {
+  useAssignmentStore.getState().hydrate(role, userId);
+  useWorkoutStore.getState().hydrateHistory(userId);
+}
 
 /**
  * Bootstrap auth state on app mount.
@@ -27,7 +35,10 @@ export function useSession() {
           setSession(session);
           const profile = await getProfile(session.user.id);
           if (!mounted) return;
-          if (profile) setProfile(profile);
+          if (profile) {
+            setProfile(profile);
+            hydrateStores(session.user.id, profile.role);
+          }
         }
       } finally {
         if (mounted) setLoading(false);
@@ -47,7 +58,10 @@ export function useSession() {
 
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         const profile = await getProfile(session.user.id);
-        if (mounted && profile) setProfile(profile);
+        if (mounted && profile) {
+          setProfile(profile);
+          hydrateStores(session.user.id, profile.role);
+        }
       }
     });
 

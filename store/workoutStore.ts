@@ -2,11 +2,15 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { ActiveSession, CompletedWorkout, SetLog, ExerciseLog, WorkoutRoutine } from '@/types/workout';
+import { insertCompletedWorkout, fetchWorkoutHistory } from '@/services/workouts';
 
 interface WorkoutState {
   activeSession: ActiveSession | null;
   history: CompletedWorkout[];
   restTimerEnd: number | null;
+
+  /** Pull completed-workout history from Supabase. */
+  hydrateHistory: (userId: string) => Promise<void>;
 
   startWorkout: (routine: WorkoutRoutine) => void;
   cancelWorkout: () => void;
@@ -20,7 +24,7 @@ interface WorkoutState {
   startRestTimer: (seconds: number) => void;
   clearRestTimer: () => void;
 
-  finishWorkout: () => CompletedWorkout | null;
+  finishWorkout: (userId?: string) => CompletedWorkout | null;
 }
 
 function buildExerciseLogs(routine: WorkoutRoutine): ExerciseLog[] {
@@ -41,6 +45,15 @@ export const useWorkoutStore = create<WorkoutState>()(
       activeSession: null,
       history: [],
       restTimerEnd: null,
+
+      hydrateHistory: async (userId) => {
+        try {
+          const history = await fetchWorkoutHistory(userId);
+          set({ history });
+        } catch (e) {
+          console.warn('[workoutStore] hydrateHistory failed', e);
+        }
+      },
 
       startWorkout: (routine) => {
         set({
@@ -120,7 +133,7 @@ export const useWorkoutStore = create<WorkoutState>()(
         set({ restTimerEnd: null });
       },
 
-      finishWorkout: () => {
+      finishWorkout: (userId) => {
         const session = get().activeSession;
         if (!session) return null;
         const completedAt = Date.now();
@@ -153,6 +166,14 @@ export const useWorkoutStore = create<WorkoutState>()(
           restTimerEnd: null,
           history: [completed, ...state.history].slice(0, 50),
         }));
+
+        // Sync to Supabase (fire-and-forget)
+        if (userId) {
+          insertCompletedWorkout(userId, completed).catch((e) =>
+            console.warn('[workoutStore] DB insert failed', e),
+          );
+        }
+
         return completed;
       },
     }),

@@ -4,8 +4,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '@/components/ui/Screen';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
-import { CLIENTS } from '@/data/clients';
+import { useTrainerClients } from '@/hooks/useTrainerClients';
 import { useAssignmentStore } from '@/store/assignmentStore';
+import { useAuthStore } from '@/store/authStore';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
 
 const hour = new Date().getHours();
@@ -13,9 +14,12 @@ const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Go
 
 export default function Dashboard() {
   const router = useRouter();
+  const profile = useAuthStore((s) => s.profile);
+  const userId = useAuthStore((s) => s.user?.id);
+  const { clients } = useTrainerClients(userId);
   const assignments = useAssignmentStore((s) => s.assignments);
 
-  const activeClients = CLIENTS.filter((c) => c.active).length;
+  const activeClients = clients.filter((c) => c.active).length;
   const activeAssignments = assignments.filter((a) => a.status !== 'completed').length;
   const recentAssignments = assignments
     .filter((a) => a.status !== 'completed')
@@ -29,7 +33,7 @@ export default function Dashboard() {
   ];
 
   const getClientName = (clientId: string) =>
-    CLIENTS.find((c) => c.clientId === clientId)?.clientName ?? 'Unknown';
+    clients.find((c) => c.clientId === clientId)?.clientName ?? 'Unknown';
 
   const statusColor: Record<string, string> = {
     assigned: '#60A5FA',
@@ -40,7 +44,7 @@ export default function Dashboard() {
     <Screen>
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.title}>Dashboard</Text>
-        <Text style={styles.subtitle}>{greeting}, Marko</Text>
+        <Text style={styles.subtitle}>{greeting}, {profile?.full_name?.split(' ')[0] ?? 'Trainer'}</Text>
 
         <View style={styles.grid}>
           {quickStats.map((s) => (

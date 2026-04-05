@@ -8,12 +8,14 @@ import { ProgressBar } from '@/components/workout/ProgressBar';
 import { ExerciseCard } from '@/components/workout/ExerciseCard';
 import { RestTimer } from '@/components/workout/RestTimer';
 import { useWorkoutStore } from '@/store/workoutStore';
+import { useAuthStore } from '@/store/authStore';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
 
 const REST_SECONDS = 90;
 
 export default function WorkoutSession() {
   const router = useRouter();
+  const userId = useAuthStore((s) => s.user?.id);
   const session = useWorkoutStore((s) => s.activeSession);
   const restTimerEnd = useWorkoutStore((s) => s.restTimerEnd);
   const goToExercise = useWorkoutStore((s) => s.goToExercise);
@@ -47,11 +49,11 @@ export default function WorkoutSession() {
   }, [session]);
 
   const handleFinish = useCallback(() => {
-    const result = finishWorkout();
+    const result = finishWorkout(userId);
     if (result) {
       router.replace('/(workout)/summary');
     }
-  }, [finishWorkout, router]);
+  }, [finishWorkout, userId, router]);
 
   const handleCancel = useCallback(() => {
     Alert.alert('Cancel Workout', 'Are you sure? Progress will be lost.', [

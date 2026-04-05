@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { useAssignmentStore } from '@/store/assignmentStore';
+import { useAuthStore } from '@/store/authStore';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
 
 const mockPrograms = [
@@ -22,10 +23,11 @@ const difficultyColor: Record<string, string> = {
 };
 
 export default function Programs() {
+  const userId = useAuthStore((s) => s.user?.id);
   const allAssignments = useAssignmentStore((s) => s.assignments);
   const assignments = useMemo(
-    () => allAssignments.filter((a) => a.clientId === 'cl-05'),
-    [allAssignments],
+    () => allAssignments.filter((a) => a.clientId === userId),
+    [allAssignments, userId],
   );
 
   // map programName → best status (in_progress > assigned > completed)

@@ -8,12 +8,15 @@ import { Button } from '@/components/ui/Button';
 import { DayPicker } from '@/components/ui/DayPicker';
 import { ROUTINES } from '@/data/routines';
 import { useAssignmentStore } from '@/store/assignmentStore';
+import { useAuthStore } from '@/store/authStore';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
 import type { DayOfWeek } from '@/types/assignment';
 
 export default function Assign() {
   const { clientId, clientName } = useLocalSearchParams<{ clientId: string; clientName: string }>();
   const router = useRouter();
+  const trainerId = useAuthStore((s) => s.user?.id);
+  const trainerName = useAuthStore((s) => s.profile?.full_name);
   const createAssignment = useAssignmentStore((s) => s.createAssignment);
 
   const [selectedRoutineId, setSelectedRoutineId] = useState<string | null>(null);
@@ -23,22 +26,27 @@ export default function Assign() {
   const selectedRoutine = ROUTINES.find((r) => r.id === selectedRoutineId);
   const canSubmit = selectedRoutineId && selectedDays.length > 0;
 
-  const handleAssign = () => {
-    if (!selectedRoutineId || !clientId) return;
+  const handleAssign = async () => {
+    if (!selectedRoutineId || !clientId || !trainerId) return;
 
-    createAssignment({
-      clientId,
-      routineId: selectedRoutineId,
-      scheduleDays: selectedDays,
-      note: note.trim() || undefined,
-      programName: "Marko's Strength Foundation",
-    });
+    try {
+      await createAssignment({
+        trainerId,
+        clientId,
+        routineName: selectedRoutine?.name ?? 'Unknown Routine',
+        scheduleDays: selectedDays,
+        note: note.trim() || undefined,
+        programName: trainerName ? `${trainerName}'s Program` : undefined,
+      });
 
-    Alert.alert(
-      'Workout Assigned',
-      `"${selectedRoutine?.name}" has been assigned to ${clientName} for ${selectedDays.join(', ')}.`,
-      [{ text: 'Done', onPress: () => router.back() }],
-    );
+      Alert.alert(
+        'Workout Assigned',
+        `"${selectedRoutine?.name}" has been assigned to ${clientName} for ${selectedDays.join(', ')}.`,
+        [{ text: 'Done', onPress: () => router.back() }],
+      );
+    } catch (e) {
+      Alert.alert('Error', 'Failed to assign workout. Please try again.');
+    }
   };
 
   return (

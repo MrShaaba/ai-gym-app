@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { useWorkoutStore } from '@/store/workoutStore';
 import { useAssignmentStore } from '@/store/assignmentStore';
+import { useAuthStore } from '@/store/authStore';
 import { ROUTINES } from '@/data/routines';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
 
@@ -25,16 +26,34 @@ const WEEK_DAYS = Array.from({ length: 7 }, (_, i) => {
   };
 });
 
+const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const todayLabel = DAY_LABELS[now.getDay()];
+
 export default function Workout() {
   const router = useRouter();
+  const userId = useAuthStore((s) => s.user?.id);
   const startWorkout = useWorkoutStore((s) => s.startWorkout);
   const activeSession = useWorkoutStore((s) => s.activeSession);
   const notifications = useAssignmentStore((s) => s.notifications);
+  const allAssignments = useAssignmentStore((s) => s.assignments);
   const markAllRead = useAssignmentStore((s) => s.markAllNotificationsRead);
   const unreadCount = useMemo(() => notifications.filter((n) => !n.read).length, [notifications]);
 
-  const handlePlay = (routineId: string) => {
-    const routine = ROUTINES.find((r) => r.id === routineId);
+  // Derive today's routines from assignments (fallback to local catalog)
+  const todayRoutines = useMemo(() => {
+    const myAssignments = allAssignments.filter(
+      (a) => a.clientId === userId && a.status !== 'completed' && a.scheduleDays.includes(todayLabel as any),
+    );
+    if (myAssignments.length > 0) {
+      return myAssignments
+        .map((a) => ROUTINES.find((r) => r.name === a.routineName))
+        .filter(Boolean) as typeof ROUTINES;
+    }
+    return ROUTINES.slice(0, 3);
+  }, [allAssignments, userId]);
+
+  const handlePlay = (routineName: string) => {
+    const routine = ROUTINES.find((r) => r.name === routineName);
     if (!routine) return;
     startWorkout(routine);
     router.push('/(workout)/session');
@@ -89,7 +108,7 @@ export default function Workout() {
 
         <Text style={styles.sectionTitle}>Today's Routines</Text>
 
-        {ROUTINES.slice(0, 3).map((routine) => (
+        {todayRoutines.map((routine) => (
           <Card key={routine.id} accent style={styles.routineCard}>
             <View style={styles.routineRow}>
               <View style={styles.routineInfo}>
@@ -109,7 +128,7 @@ export default function Workout() {
               </View>
               <TouchableOpacity
                 style={styles.playBtn}
-                onPress={() => handlePlay(routine.id)}
+                onPress={() => handlePlay(routine.name)}
                 disabled={!!activeSession}
               >
                 <Ionicons name="play" size={20} color={colors.background} />

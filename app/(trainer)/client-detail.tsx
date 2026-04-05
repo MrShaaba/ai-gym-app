@@ -6,8 +6,9 @@ import { Screen } from '@/components/ui/Screen';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
-import { getClient } from '@/data/clients';
+import { useTrainerClients } from '@/hooks/useTrainerClients';
 import { useAssignmentStore } from '@/store/assignmentStore';
+import { useAuthStore } from '@/store/authStore';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
 
 const statusColor: Record<string, string> = {
@@ -25,12 +26,24 @@ const statusLabel: Record<string, string> = {
 export default function ClientDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
-  const client = getClient(id ?? '');
+  const trainerId = useAuthStore((s) => s.user?.id);
+  const { clients, loading } = useTrainerClients(trainerId);
+  const client = clients.find((c) => c.clientId === (id ?? ''));
   const allAssignments = useAssignmentStore((s) => s.assignments);
   const assignments = useMemo(
     () => allAssignments.filter((a) => a.clientId === (id ?? '')),
     [allAssignments, id],
   );
+
+  if (loading) {
+    return (
+      <Screen>
+        <View style={styles.centered}>
+          <Text style={styles.emptyText}>Loading…</Text>
+        </View>
+      </Screen>
+    );
+  }
 
   if (!client) {
     return (

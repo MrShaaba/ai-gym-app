@@ -6,6 +6,7 @@ import { Screen } from '@/components/ui/Screen';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { signIn } from '@/services/auth';
+import { useAuthStore } from '@/store/authStore';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
 
 export default function Login() {
@@ -20,8 +21,9 @@ export default function Login() {
     if (!email || !password) { setError('Email and password are required.'); return; }
     setBusy(true);
     try {
-      await signIn({ email, password });
-      // useSession listener will update authStore → index.tsx will redirect
+      const data = await signIn({ email, password });
+      // Eagerly update store so index.tsx sees isAuthenticated before redirect
+      useAuthStore.getState().setSession(data.session!);
       router.replace('/');
     } catch (e: any) {
       setError(e.message ?? 'Sign in failed');

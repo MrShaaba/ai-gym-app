@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { useAssignmentStore } from '@/store/assignmentStore';
 import { useWorkoutStore } from '@/store/workoutStore';
+import { useAuthStore } from '@/store/authStore';
 import { ROUTINES } from '@/data/routines';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
 import type { DayOfWeek } from '@/types/assignment';
@@ -16,14 +17,13 @@ const DAY_INDEX: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu:
 const todayIndex = new Date().getDay();
 const todayLabel = DAYS[(todayIndex + 6) % 7]; // convert Sun=0 to Mon-first
 
-const CLIENT_ID = 'cl-05'; // Alex
-
 export default function Schedule() {
   const router = useRouter();
+  const userId = useAuthStore((s) => s.user?.id);
   const allAssignments = useAssignmentStore((s) => s.assignments);
   const assignments = useMemo(
-    () => allAssignments.filter((a) => a.clientId === CLIENT_ID),
-    [allAssignments],
+    () => allAssignments.filter((a) => a.clientId === userId),
+    [allAssignments, userId],
   );
   const startWorkout = useWorkoutStore((s) => s.startWorkout);
   const activeSession = useWorkoutStore((s) => s.activeSession);
@@ -35,8 +35,8 @@ export default function Schedule() {
     dayMap.set(day, active.filter((a) => a.scheduleDays.includes(day)));
   }
 
-  const handleStart = (routineId: string) => {
-    const routine = ROUTINES.find((r) => r.id === routineId);
+  const handleStart = (routineName: string) => {
+    const routine = ROUTINES.find((r) => r.name === routineName);
     if (!routine) return;
     startWorkout(routine);
     router.push('/(workout)/session');
@@ -92,7 +92,7 @@ export default function Schedule() {
                       {isToday && !activeSession && (
                         <TouchableOpacity
                           style={styles.startBtn}
-                          onPress={() => handleStart(a.routineId)}
+                          onPress={() => handleStart(a.routineName)}
                         >
                           <Ionicons name="play" size={18} color={colors.background} />
                         </TouchableOpacity>
