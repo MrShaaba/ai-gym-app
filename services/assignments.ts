@@ -1,5 +1,5 @@
 import { supabase } from '@/config/supabase';
-import type { Assignment, AssignmentStatus, DayOfWeek } from '@/types/assignment';
+import type { Assignment, AssignmentStatus, AssignmentSource, DayOfWeek } from '@/types/assignment';
 
 /* ── helpers ─────────────────────────────────────────────────── */
 
@@ -13,6 +13,7 @@ function mapRow(row: Record<string, unknown>): Assignment {
     programName: (row.program_name as string) ?? undefined,
     scheduleDays: (row.schedule_days as DayOfWeek[]) ?? [],
     status: row.status as AssignmentStatus,
+    source: (row.source as AssignmentSource) ?? 'trainer',
     note: (row.note as string) ?? undefined,
     assignedAt: new Date(row.assigned_at as string).getTime(),
     startedAt: row.started_at
@@ -64,6 +65,34 @@ export async function insertAssignment(params: {
       schedule_days: params.scheduleDays,
       note: params.note ?? null,
       exercises_json: params.exercisesJson ?? null,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return mapRow(data);
+}
+
+/** Self-assign a routine/program to a client's schedule. */
+export async function insertSelfAssignment(params: {
+  clientId: string;
+  routineId: string;
+  routineName: string;
+  programName?: string;
+  scheduleDays: string[];
+  exercisesJson?: unknown;
+  source: AssignmentSource;
+}): Promise<Assignment> {
+  const { data, error } = await supabase
+    .from('assignments')
+    .insert({
+      trainer_id: params.clientId, // self-assigned: trainer = client
+      client_id: params.clientId,
+      routine_id: params.routineId,
+      routine_name: params.routineName,
+      program_name: params.programName ?? null,
+      schedule_days: params.scheduleDays,
+      exercises_json: params.exercisesJson ?? null,
+      source: params.source,
     })
     .select()
     .single();

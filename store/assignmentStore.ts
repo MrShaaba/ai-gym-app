@@ -1,10 +1,11 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { Assignment, ClientNotification, DayOfWeek } from '@/types/assignment';
+import type { Assignment, AssignmentSource, ClientNotification, DayOfWeek } from '@/types/assignment';
 import {
   fetchAssignments,
   insertAssignment,
+  insertSelfAssignment,
   updateAssignmentStatusDB,
 } from '@/services/assignments';
 
@@ -38,6 +39,17 @@ interface AssignmentState {
   getUnreadCount: () => number;
   markNotificationRead: (id: string) => void;
   markAllNotificationsRead: () => void;
+
+  /** Self-assign a routine to the client's schedule. */
+  selfAssign: (params: {
+    clientId: string;
+    routineId: string;
+    routineName: string;
+    programName?: string;
+    scheduleDays: DayOfWeek[];
+    exercisesJson?: unknown;
+    source: AssignmentSource;
+  }) => Promise<Assignment>;
 }
 
 export const useAssignmentStore = create<AssignmentState>()(
@@ -129,6 +141,24 @@ export const useAssignmentStore = create<AssignmentState>()(
         set((s) => ({
           notifications: s.notifications.map((n) => ({ ...n, read: true })),
         })),
+
+      selfAssign: async (params) => {
+        const newAssignment = await insertSelfAssignment({
+          clientId: params.clientId,
+          routineId: params.routineId,
+          routineName: params.routineName,
+          programName: params.programName,
+          scheduleDays: params.scheduleDays,
+          exercisesJson: params.exercisesJson,
+          source: params.source,
+        });
+
+        set((s) => ({
+          assignments: [newAssignment, ...s.assignments],
+        }));
+
+        return newAssignment;
+      },
     }),
     {
       name: 'assignment-storage',

@@ -5,10 +5,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '@/components/ui/Screen';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { PlanBadge } from '@/components/ui/PlanBadge';
 import { useWorkoutStore } from '@/store/workoutStore';
 import { useAssignmentStore } from '@/store/assignmentStore';
 import { useUserId } from '@/hooks/useUserId';
 import { fetchClientRoutines, routineRowToWorkoutRoutine, type RoutineRow } from '@/services/programs';
+import { BUTTONS, EMPTY } from '@/config/copy';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
 import type { WorkoutRoutine } from '@/types/workout';
 
@@ -64,7 +66,7 @@ export default function Workout() {
   }, [loadRoutines]);
 
   // Derive routines for the selected day from assignments
-  const todayRoutines = useMemo((): WorkoutRoutine[] => {
+  const todayRoutines = useMemo((): (WorkoutRoutine & { source?: string })[] => {
     const myAssignments = allAssignments.filter(
       (a) => a.clientId === userId && a.status !== 'completed' && a.scheduleDays.includes(selectedDayLabel as any),
     );
@@ -76,6 +78,7 @@ export default function Workout() {
         exercises: a.exercisesJson!,
         difficulty: 'intermediate' as const,
         assignedBy: a.programName,
+        source: a.source,
       }));
   }, [allAssignments, userId, selectedDayLabel]);
 
@@ -136,7 +139,7 @@ export default function Workout() {
                 <Text style={styles.resumeRoutine}>{activeSession.routineName}</Text>
               </View>
             </View>
-            <Text style={styles.resumeAction}>Resume →</Text>
+            <Text style={styles.resumeAction}>{BUTTONS.continueWorkout} →</Text>
           </TouchableOpacity>
         )}
 
@@ -190,7 +193,7 @@ export default function Workout() {
         {todayRoutines.length === 0 && (
           <Card style={{ marginBottom: spacing.md }}>
             <Text style={{ color: colors.textMuted, textAlign: 'center', paddingVertical: spacing.md }}>
-              No workouts scheduled for today.
+              {EMPTY.noWorkoutsToday}
             </Text>
           </Card>
         )}
@@ -200,6 +203,9 @@ export default function Workout() {
             <View style={styles.routineRow}>
               <View style={styles.routineInfo}>
                 <Text style={styles.routineName}>{routine.name}</Text>
+                {routine.source && (
+                  <PlanBadge source={routine.source as any} />
+                )}
                 <Text style={styles.routineMuscles}>
                   {[...new Set(routine.exercises.flatMap((e) => e.exercise.muscleGroups))].slice(0, 3).join(', ')}
                 </Text>
@@ -227,7 +233,7 @@ export default function Workout() {
         <Text style={styles.sectionTitle}>Quick Actions</Text>
         <View style={styles.quickActions}>
           <Button
-            title="Generate Workout"
+            title={BUTTONS.generateWorkout}
             icon="sparkles-outline"
             onPress={() => router.push('/(client)/generate')}
             style={styles.actionBtn}

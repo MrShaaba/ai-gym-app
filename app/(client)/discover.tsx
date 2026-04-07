@@ -6,9 +6,20 @@ import { Screen } from '@/components/ui/Screen';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { useTrainerSearch } from '@/hooks/useTrainerSearch';
-import { SPECIALTY_OPTIONS } from '@/types/marketplace';
 import type { TrainerPublicProfile } from '@/types/marketplace';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
+
+/** Compact filter labels → specialty values used in the DB. */
+const FILTER_CHIPS = [
+  { label: 'Strength', value: 'Strength' },
+  { label: 'Hypertrophy', value: 'Hypertrophy' },
+  { label: 'Fat Loss', value: 'Weight Loss' },
+  { label: 'HIIT', value: 'HIIT' },
+  { label: 'Power', value: 'Powerlifting' },
+  { label: 'Mobility', value: 'Flexibility' },
+  { label: 'Rehab', value: 'Rehabilitation' },
+  { label: 'Endurance', value: 'Endurance' },
+] as const;
 
 export default function Discover() {
   const router = useRouter();
@@ -116,25 +127,27 @@ export default function Discover() {
 
         <FlatList
           horizontal
-          data={SPECIALTY_OPTIONS as unknown as string[]}
-          keyExtractor={(item) => item}
+          data={FILTER_CHIPS}
+          keyExtractor={(item) => item.value}
           showsHorizontalScrollIndicator={false}
+          style={{ flexGrow: 0 }}
           contentContainerStyle={styles.filterRow}
           renderItem={({ item }) => (
             <Pressable
-              onPress={() => toggleSpecialty(item)}
+              onPress={() => toggleSpecialty(item.value)}
               style={[
                 styles.filterChip,
-                selectedSpecialty === item && styles.filterChipActive,
+                selectedSpecialty === item.value && styles.filterChipActive,
               ]}
             >
               <Text
+                numberOfLines={1}
                 style={[
                   styles.filterChipText,
-                  selectedSpecialty === item && styles.filterChipTextActive,
+                  selectedSpecialty === item.value && styles.filterChipTextActive,
                 ]}
               >
-                {item}
+                {item.label}
               </Text>
             </Pressable>
           )}
@@ -191,28 +204,30 @@ const styles = StyleSheet.create({
   filterRow: {
     gap: spacing.sm,
     paddingBottom: spacing.md,
+    alignItems: 'center',
   },
   filterChip: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 4,
-    borderRadius: borderRadius.full,
+    height: 34,
+    paddingHorizontal: 14,
+    borderRadius: 17,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: colors.background,
+    backgroundColor: colors.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   filterChipActive: {
-    backgroundColor: colors.accent + '20',
+    backgroundColor: colors.accent + '15',
     borderColor: colors.accent,
   },
   filterChipText: {
-    color: colors.textMuted,
-    fontSize: 11,
+    color: colors.textSecondary,
+    fontSize: 13,
     fontWeight: '500',
-    letterSpacing: 0.3,
   },
   filterChipTextActive: {
     color: colors.accent,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   list: {
     paddingBottom: spacing.xxl,

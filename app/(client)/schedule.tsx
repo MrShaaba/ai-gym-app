@@ -5,9 +5,11 @@ import { useMemo } from 'react';
 import { Screen } from '@/components/ui/Screen';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
+import { PlanBadge } from '@/components/ui/PlanBadge';
 import { useAssignmentStore } from '@/store/assignmentStore';
 import { useWorkoutStore } from '@/store/workoutStore';
 import { useUserId } from '@/hooks/useUserId';
+import { EMPTY } from '@/config/copy';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
 import type { DayOfWeek, Assignment } from '@/types/assignment';
 import type { WorkoutRoutine } from '@/types/workout';
@@ -55,9 +57,11 @@ export default function Schedule() {
   return (
     <Screen>
       <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>Schedule</Text>
+        <Text style={styles.title}>Today's Schedule</Text>
         <Text style={styles.subtitle}>
-          {active.length} active assignment{active.length !== 1 ? 's' : ''}
+          {active.length > 0
+            ? `${active.length} active plan${active.length !== 1 ? 's' : ''}`
+            : EMPTY.noSchedule}
         </Text>
 
         {DAYS.map((day) => {
@@ -88,11 +92,14 @@ export default function Schedule() {
                         {a.programName && (
                           <Text style={styles.programName}>{a.programName}</Text>
                         )}
-                        <Badge
-                          label={a.status.replace('_', ' ')}
-                          color={statusColor[a.status] ?? colors.accent}
-                          size="sm"
-                        />
+                        <View style={styles.badgeRow}>
+                          <PlanBadge source={a.source ?? 'trainer'} />
+                          <Badge
+                            label={a.status.replace('_', ' ')}
+                            color={statusColor[a.status] ?? colors.accent}
+                            size="sm"
+                          />
+                        </View>
                       </View>
                       {isToday && !activeSession && (
                         <TouchableOpacity
@@ -191,6 +198,11 @@ const styles = StyleSheet.create({
   programName: {
     color: colors.textMuted,
     fontSize: fontSize.xs,
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
   },
   startBtn: {
     width: 40,

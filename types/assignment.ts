@@ -2,6 +2,8 @@
 
 export type AssignmentStatus = 'assigned' | 'in_progress' | 'completed';
 
+export type AssignmentSource = 'trainer' | 'self' | 'ai';
+
 export type DayOfWeek = 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun';
 
 export interface Assignment {
@@ -13,6 +15,7 @@ export interface Assignment {
   programName?: string;
   scheduleDays: DayOfWeek[];
   status: AssignmentStatus;
+  source: AssignmentSource;
   note?: string;
   assignedAt: number;
   startedAt?: number;
