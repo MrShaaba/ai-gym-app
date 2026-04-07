@@ -52,9 +52,13 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ profile, role: profile.role }),
 
   logout: () => {
-    signOut().catch(() => {}); // fire-and-forget; clears server session
+    // 1. Clear persisted store data from disk FIRST to prevent stale rehydration
+    AsyncStorage.multiRemove(['workout-storage', 'assignment-storage']).catch(() => {});
+    // 2. Clear in-memory state
     useWorkoutStore.getState().reset();
     useAssignmentStore.getState().reset();
+    // 3. Fire-and-forget Supabase sign-out
+    signOut().catch(() => {});
     set({
       isAuthenticated: false,
       role: null,

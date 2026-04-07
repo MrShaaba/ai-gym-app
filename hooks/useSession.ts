@@ -6,18 +6,23 @@ import { useWorkoutStore } from '@/store/workoutStore';
 import { getSession, onAuthStateChange } from '@/services/auth';
 import { getProfile } from '@/services/profiles';
 
-/** Clear persisted store caches, reset in-memory state, then hydrate fresh from DB. */
+/** Reset in-memory state then hydrate fresh from Supabase.
+ *  AsyncStorage keys are already cleared by authStore.logout() on sign-out,
+ *  so we only need to reset + fetch here.
+ */
 async function resetAndHydrateStores(userId: string, role: 'client' | 'trainer') {
-  // 1. Wipe AsyncStorage keys so persist middleware can't re-inject stale data
+  // 1. Wipe AsyncStorage keys (idempotent — may already be cleared by logout)
   await AsyncStorage.multiRemove(['workout-storage', 'assignment-storage']);
 
   // 2. Reset in-memory state
   useAssignmentStore.getState().reset();
   useWorkoutStore.getState().reset();
 
-  // 3. Hydrate fresh from Supabase
-  useAssignmentStore.getState().hydrate(role, userId);
-  useWorkoutStore.getState().hydrateHistory(userId);
+  // 3. Hydrate fresh from Supabase (await both to ensure data lands before render)
+  await Promise.all([
+    useAssignmentStore.getState().hydrate(role, userId),
+    useWorkoutStore.getState().hydrateHistory(userId),
+  ]);
 }
 
 /**
@@ -46,7 +51,7 @@ export function useSession() {
           if (!mounted) return;
           if (profile) {
             setProfile(profile);
-            resetAndHydrateStores(session.user.id, profile.role);
+            await resetAndHydrateStores(session.user.id, profile.role);
           }
         }
       } finally {
@@ -71,7 +76,7 @@ export function useSession() {
         const profile = await getProfile(session.user.id);
         if (mounted && profile) {
           setProfile(profile);
-          resetAndHydrateStores(session.user.id, profile.role);
+          await resetAndHydrateStores(session.user.id, profile.role);
         }
       }
     });
