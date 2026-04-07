@@ -1,14 +1,21 @@
 import { useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuthStore } from '@/store/authStore';
 import { useAssignmentStore } from '@/store/assignmentStore';
 import { useWorkoutStore } from '@/store/workoutStore';
 import { getSession, onAuthStateChange } from '@/services/auth';
 import { getProfile } from '@/services/profiles';
 
-/** Reset persisted stores then hydrate fresh data for the new user. */
-function resetAndHydrateStores(userId: string, role: 'client' | 'trainer') {
+/** Clear persisted store caches, reset in-memory state, then hydrate fresh from DB. */
+async function resetAndHydrateStores(userId: string, role: 'client' | 'trainer') {
+  // 1. Wipe AsyncStorage keys so persist middleware can't re-inject stale data
+  await AsyncStorage.multiRemove(['workout-storage', 'assignment-storage']);
+
+  // 2. Reset in-memory state
   useAssignmentStore.getState().reset();
   useWorkoutStore.getState().reset();
+
+  // 3. Hydrate fresh from Supabase
   useAssignmentStore.getState().hydrate(role, userId);
   useWorkoutStore.getState().hydrateHistory(userId);
 }

@@ -193,24 +193,26 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.md,
   },
   filterChip: {
-    paddingHorizontal: spacing.sm + 4,
-    paddingVertical: spacing.xs + 2,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
     borderRadius: borderRadius.full,
     borderWidth: 1,
     borderColor: colors.border,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.background,
   },
   filterChipActive: {
     backgroundColor: colors.accent + '20',
     borderColor: colors.accent,
   },
   filterChipText: {
-    color: colors.textSecondary,
-    fontSize: fontSize.xs,
+    color: colors.textMuted,
+    fontSize: 11,
+    fontWeight: '500',
+    letterSpacing: 0.3,
   },
   filterChipTextActive: {
     color: colors.accent,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   list: {
     paddingBottom: spacing.xxl,
