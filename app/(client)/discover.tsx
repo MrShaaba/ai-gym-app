@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, FlatList, Pressable, TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,15 +24,25 @@ const FILTER_CHIPS = [
 export default function Discover() {
   const router = useRouter();
   const [query, setQuery] = useState('');
-  const [selectedSpecialty, setSelectedSpecialty] = useState<string | undefined>();
-  const { trainers, loading, refetch } = useTrainerSearch(query, selectedSpecialty ?? '');
+  const [selectedSpecialties, setSelectedSpecialties] = useState<string[]>([]);
+  const { trainers: allTrainers, loading, refetch } = useTrainerSearch(query, '');
+
+  // AND filter: trainer must have ALL selected specialties
+  const trainers = useMemo(() => {
+    if (selectedSpecialties.length === 0) return allTrainers;
+    return allTrainers.filter((t) =>
+      selectedSpecialties.every((s) => t.specialties.includes(s)),
+    );
+  }, [allTrainers, selectedSpecialties]);
 
   const handleTrainerPress = (trainer: TrainerPublicProfile) => {
     router.push({ pathname: '/(client)/trainer-profile', params: { id: trainer.id } });
   };
 
   const toggleSpecialty = (s: string) => {
-    setSelectedSpecialty((prev) => (prev === s ? undefined : s));
+    setSelectedSpecialties((prev) =>
+      prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s],
+    );
   };
 
   const renderStars = (rating: number) => {
@@ -137,14 +147,14 @@ export default function Discover() {
               onPress={() => toggleSpecialty(item.value)}
               style={[
                 styles.filterChip,
-                selectedSpecialty === item.value && styles.filterChipActive,
+                selectedSpecialties.includes(item.value) && styles.filterChipActive,
               ]}
             >
               <Text
                 numberOfLines={1}
                 style={[
                   styles.filterChipText,
-                  selectedSpecialty === item.value && styles.filterChipTextActive,
+                  selectedSpecialties.includes(item.value) && styles.filterChipTextActive,
                 ]}
               >
                 {item.label}

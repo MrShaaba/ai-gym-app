@@ -82,22 +82,34 @@ export async function insertSelfAssignment(params: {
   exercisesJson?: unknown;
   source: AssignmentSource;
 }): Promise<Assignment> {
-  const { data, error } = await supabase
+  const base = {
+    trainer_id: params.clientId, // self-assigned: trainer = client
+    client_id: params.clientId,
+    routine_id: params.routineId,
+    routine_name: params.routineName,
+    program_name: params.programName ?? null,
+    schedule_days: params.scheduleDays,
+    exercises_json: params.exercisesJson ?? null,
+  };
+
+  // Try with source column; fall back without if migration hasn't run yet
+  let { data, error } = await supabase
     .from('assignments')
-    .insert({
-      trainer_id: params.clientId, // self-assigned: trainer = client
-      client_id: params.clientId,
-      routine_id: params.routineId,
-      routine_name: params.routineName,
-      program_name: params.programName ?? null,
-      schedule_days: params.scheduleDays,
-      exercises_json: params.exercisesJson ?? null,
-      source: params.source,
-    })
+    .insert({ ...base, source: params.source })
     .select()
     .single();
-  if (error) throw error;
-  return mapRow(data);
+
+  if (error) {
+    const fallback = await supabase
+      .from('assignments')
+      .insert(base)
+      .select()
+      .single();
+    if (fallback.error) throw fallback.error;
+    data = fallback.data;
+  }
+
+  return mapRow(data!);
 }
 
 /** Update an assignment's status (and timestamps). */
