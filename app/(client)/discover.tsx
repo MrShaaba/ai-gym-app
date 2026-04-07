@@ -193,8 +193,8 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.md,
   },
   filterChip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.sm + 4,
+    paddingVertical: spacing.xs + 2,
     borderRadius: borderRadius.full,
     borderWidth: 1,
     borderColor: colors.border,

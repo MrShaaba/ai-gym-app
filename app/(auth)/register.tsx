@@ -45,7 +45,13 @@ export default function Register() {
     }
     setBusy(true);
     try {
-      const data = await signUp({ email, password, fullName, role: selectedRole });
+      const data = await signUp({
+        email,
+        password,
+        fullName,
+        role: selectedRole,
+        username: trimmedUsername || undefined,
+      });
       setPendingRole(selectedRole);
 
       // Eagerly set session so user object is available on trainer/client screens

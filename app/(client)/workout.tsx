@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, FlatList } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Pressable, Modal, FlatList } from 'react-native';
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,23 +12,19 @@ import { fetchClientRoutines, routineRowToWorkoutRoutine, type RoutineRow } from
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
 import type { WorkoutRoutine } from '@/types/workout';
 
-const now = new Date();
-const startOfWeek = new Date(now);
-startOfWeek.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+const DAY_LABELS_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const;
 
-const WEEK_DAYS = Array.from({ length: 7 }, (_, i) => {
-  const d = new Date(startOfWeek);
-  d.setDate(startOfWeek.getDate() + i);
-  return {
-    label: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i],
-    date: d.getDate(),
-    isToday: d.toDateString() === now.toDateString(),
-    hasWorkout: [0, 1, 3, 5].includes(i),
-  };
-});
-
-const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const todayLabel = DAY_LABELS[now.getDay()];
+function buildWeekDays() {
+  const now = new Date();
+  const start = new Date(now);
+  start.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+  const todayIdx = (now.getDay() + 6) % 7; // 0=Mon … 6=Sun
+  return { days: Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    return { label: DAY_LABELS_SHORT[i], date: d.getDate(), isToday: i === todayIdx };
+  }), todayIdx };
+}
 
 export default function Workout() {
   const router = useRouter();
@@ -39,6 +35,10 @@ export default function Workout() {
   const allAssignments = useAssignmentStore((s) => s.assignments);
   const markAllRead = useAssignmentStore((s) => s.markAllNotificationsRead);
   const unreadCount = useMemo(() => notifications.filter((n) => !n.read).length, [notifications]);
+
+  const { days: weekDays, todayIdx } = useMemo(() => buildWeekDays(), []);
+  const [selectedDayIdx, setSelectedDayIdx] = useState(todayIdx);
+  const selectedDayLabel = DAY_LABELS_SHORT[selectedDayIdx];
 
   const [pickerVisible, setPickerVisible] = useState(false);
   const [selectedRoutine, setSelectedRoutine] = useState<WorkoutRoutine | null>(null);
@@ -63,21 +63,21 @@ export default function Workout() {
     loadRoutines();
   }, [loadRoutines]);
 
-  // Derive today's routines from assignments
+  // Derive routines for the selected day from assignments
   const todayRoutines = useMemo((): WorkoutRoutine[] => {
     const myAssignments = allAssignments.filter(
-      (a) => a.clientId === userId && a.status !== 'completed' && a.scheduleDays.includes(todayLabel as any),
+      (a) => a.clientId === userId && a.status !== 'completed' && a.scheduleDays.includes(selectedDayLabel as any),
     );
     return myAssignments
       .filter((a) => a.exercisesJson && a.exercisesJson.length > 0)
       .map((a) => ({
-        id: a.routineId,
+        id: a.id,
         name: a.routineName,
         exercises: a.exercisesJson!,
         difficulty: 'intermediate' as const,
         assignedBy: a.programName,
       }));
-  }, [allAssignments, userId]);
+  }, [allAssignments, userId, selectedDayLabel]);
 
   const handlePlay = (routine: WorkoutRoutine) => {
     startWorkout(routine);
@@ -99,17 +99,20 @@ export default function Workout() {
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.pageTitle}>Workout</Text>
         <Text style={styles.dateSubtitle}>
-          {now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+          {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
         </Text>
 
         <View style={styles.calendarStrip}>
-          {WEEK_DAYS.map((day) => (
-            <View key={day.label} style={[styles.dayCol, day.isToday && styles.dayColActive]}>
-              <Text style={[styles.dayLabel, day.isToday && styles.dayLabelActive]}>{day.label.toUpperCase()}</Text>
-              <Text style={[styles.dayDate, day.isToday && styles.dayDateActive]}>{day.date}</Text>
-              {day.hasWorkout && <View style={[styles.dayDot, day.isToday && styles.dayDotActive]} />}
-            </View>
-          ))}
+          {weekDays.map((day, idx) => {
+            const isSelected = idx === selectedDayIdx;
+            return (
+              <Pressable key={day.label} onPress={() => setSelectedDayIdx(idx)} style={[styles.dayCol, isSelected && styles.dayColActive]}>
+                <Text style={[styles.dayLabel, isSelected && styles.dayLabelActive]}>{day.label.toUpperCase()}</Text>
+                <Text style={[styles.dayDate, isSelected && styles.dayDateActive]}>{day.date}</Text>
+                {day.isToday && <View style={[styles.dayDot, isSelected && styles.dayDotActive]} />}
+              </Pressable>
+            );
+          })}
         </View>
 
         {unreadCount > 0 && (
@@ -180,7 +183,9 @@ export default function Workout() {
           </View>
         )}
 
-        <Text style={styles.sectionTitle}>Today's Routines</Text>
+        <Text style={styles.sectionTitle}>
+          {selectedDayIdx === todayIdx ? "Today's Routines" : `${selectedDayLabel}'s Routines`}
+        </Text>
 
         {todayRoutines.length === 0 && (
           <Card style={{ marginBottom: spacing.md }}>

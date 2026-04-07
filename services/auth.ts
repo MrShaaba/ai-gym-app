@@ -6,6 +6,7 @@ export interface SignUpParams {
   password: string;
   fullName: string;
   role: UserRole;
+  username?: string;
 }
 
 export interface SignInParams {
@@ -17,12 +18,16 @@ export interface SignInParams {
  * Create a new account. Supabase auth + profile trigger handles profile row.
  * The role and full_name are passed via user_metadata so the DB trigger can read them.
  */
-export async function signUp({ email, password, fullName, role }: SignUpParams) {
+export async function signUp({ email, password, fullName, role, username }: SignUpParams) {
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
-      data: { full_name: fullName, role },
+      data: {
+        full_name: fullName,
+        role,
+        ...(username ? { username } : {}),
+      },
     },
   });
   if (error) throw error;

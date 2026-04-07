@@ -2,6 +2,14 @@ import { supabase } from '@/config/supabase';
 import type { Difficulty, WorkoutExercise, WorkoutRoutine } from '@/types/workout';
 import type { GeneratedPlan, ProgramSource } from '@/types/generation';
 
+function isMissingPhase7cProgramColumn(message: string | undefined) {
+  const lower = (message ?? '').toLowerCase();
+  return lower.includes('programs.source')
+    || lower.includes('generation_metadata')
+    || lower.includes('trainer_endorsed_by')
+    || lower.includes('trainer_endorsed_at');
+}
+
 /* ── Types ───────────────────────────────────────────────────── */
 
 export interface ProgramRow {
@@ -251,7 +259,14 @@ export async function saveGeneratedPlan(userId: string, plan: GeneratedPlan): Pr
     })
     .select()
     .single();
-  if (pErr) throw pErr;
+  if (pErr) {
+    if (isMissingPhase7cProgramColumn(pErr.message)) {
+      throw new Error(
+        'AI plans cannot be saved yet because the Phase 7C database migration has not been applied.',
+      );
+    }
+    throw pErr;
+  }
 
   // 2. Insert routines
   const routineInserts = plan.routines.map((r, i) => ({
@@ -279,5 +294,12 @@ export async function endorseProgram(programId: string, trainerId: string): Prom
       trainer_endorsed_at: new Date().toISOString(),
     })
     .eq('id', programId);
-  if (error) throw error;
+  if (error) {
+    if (isMissingPhase7cProgramColumn(error.message)) {
+      throw new Error(
+        'Trainer endorsement is not available yet because the Phase 7C database migration has not been applied.',
+      );
+    }
+    throw error;
+  }
 }

@@ -36,6 +36,28 @@ export default function ClientDetail() {
     [allAssignments, id],
   );
 
+  // AI-generated programs for this client
+  const [clientPrograms, setClientPrograms] = useState<ProgramRow[]>([]);
+  const [endorsing, setEndorsing] = useState<string | null>(null);
+
+  const loadClientPrograms = useCallback(async () => {
+    if (!id) {
+      setClientPrograms([]);
+      return;
+    }
+
+    try {
+      const all = await fetchClientPrograms(id);
+      setClientPrograms(all.filter((p) => p.source === 'ai' || p.source === 'ai_endorsed'));
+    } catch {
+      setClientPrograms([]);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    loadClientPrograms();
+  }, [loadClientPrograms]);
+
   if (loading) {
     return (
       <Screen>
@@ -58,24 +80,6 @@ export default function ClientDetail() {
 
   const activeAssignments = assignments.filter((a) => a.status !== 'completed');
   const completedAssignments = assignments.filter((a) => a.status === 'completed');
-
-  // AI-generated programs for this client
-  const [clientPrograms, setClientPrograms] = useState<ProgramRow[]>([]);
-  const [endorsing, setEndorsing] = useState<string | null>(null);
-
-  const loadClientPrograms = useCallback(async () => {
-    if (!id) return;
-    try {
-      const all = await fetchClientPrograms(id);
-      setClientPrograms(all.filter((p) => p.source === 'ai' || p.source === 'ai_endorsed'));
-    } catch {
-      /* ignore */
-    }
-  }, [id]);
-
-  useEffect(() => {
-    loadClientPrograms();
-  }, [loadClientPrograms]);
 
   const handleEndorse = async (programId: string) => {
     if (!trainerId) return;

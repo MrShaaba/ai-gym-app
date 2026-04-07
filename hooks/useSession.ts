@@ -5,8 +5,10 @@ import { useWorkoutStore } from '@/store/workoutStore';
 import { getSession, onAuthStateChange } from '@/services/auth';
 import { getProfile } from '@/services/profiles';
 
-/** Hydrate assignment + workout stores once a profile is known. */
-function hydrateStores(userId: string, role: 'client' | 'trainer') {
+/** Reset persisted stores then hydrate fresh data for the new user. */
+function resetAndHydrateStores(userId: string, role: 'client' | 'trainer') {
+  useAssignmentStore.getState().reset();
+  useWorkoutStore.getState().reset();
   useAssignmentStore.getState().hydrate(role, userId);
   useWorkoutStore.getState().hydrateHistory(userId);
 }
@@ -37,7 +39,7 @@ export function useSession() {
           if (!mounted) return;
           if (profile) {
             setProfile(profile);
-            hydrateStores(session.user.id, profile.role);
+            resetAndHydrateStores(session.user.id, profile.role);
           }
         }
       } finally {
@@ -62,7 +64,7 @@ export function useSession() {
         const profile = await getProfile(session.user.id);
         if (mounted && profile) {
           setProfile(profile);
-          hydrateStores(session.user.id, profile.role);
+          resetAndHydrateStores(session.user.id, profile.role);
         }
       }
     });
