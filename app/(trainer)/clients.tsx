@@ -5,6 +5,8 @@ import { Screen } from '@/components/ui/Screen';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { SectionHeader } from '@/components/ui/SectionHeader';
 import { useTrainerClients } from '@/hooks/useTrainerClients';
 import { useAssignmentStore } from '@/store/assignmentStore';
 import { useUserId } from '@/hooks/useUserId';
@@ -26,7 +28,13 @@ export default function Clients() {
     <Screen>
       <ScrollView contentContainerStyle={styles.container}>
         <Text style={styles.title}>Clients</Text>
-        <Text style={styles.subtitle}>{clients.length} total  ·  {active.length} active</Text>
+        <Text style={styles.subtitle}>
+          {loading
+            ? 'Loading…'
+            : clients.length === 0
+              ? 'No clients yet'
+              : `${clients.length} total  ·  ${active.length} active`}
+        </Text>
 
         <Button
           title="Invite Client"
@@ -36,43 +44,59 @@ export default function Clients() {
           style={{ marginBottom: spacing.lg }}
         />
 
-        <Text style={styles.sectionTitle}>Active ({active.length})</Text>
-        {active.map((client) => {
-          const activeCount = getActiveCount(client.clientId);
-          return (
-            <TouchableOpacity
-              key={client.clientId}
-              onPress={() => router.push({ pathname: '/(trainer)/client-detail', params: { id: client.clientId } })}
-            >
-              <Card style={styles.card}>
-                <View style={styles.row}>
-                  <View style={styles.avatarCircle}>
-                    <Text style={styles.avatarText}>{client.clientInitials}</Text>
-                  </View>
-                  <View style={styles.info}>
-                    <Text style={styles.clientName}>{client.clientName}</Text>
-                    <Text style={styles.clientGoal}>{client.goal}</Text>
-                    <View style={styles.metaRow}>
-                      <Text style={styles.lastActive}>Active {client.lastActive}</Text>
-                      {activeCount > 0 && (
-                        <Badge label={`${activeCount} active`} color={colors.accent} />
-                      )}
-                    </View>
-                  </View>
-                  <View style={styles.workoutBadge}>
-                    <Text style={styles.workoutCount}>{client.workoutCount}</Text>
-                    <Text style={styles.workoutLabel}>sessions</Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-                </View>
-              </Card>
-            </TouchableOpacity>
-          );
-        })}
+        {/* Empty state — no clients at all */}
+        {!loading && clients.length === 0 && (
+          <EmptyState
+            icon="people-outline"
+            message="Invite your first client to get started. Once linked, you can assign routines and track their progress here."
+          />
+        )}
 
+        {/* Active clients */}
+        {active.length > 0 && (
+          <>
+            <SectionHeader title={`Active (${active.length})`} />
+            {active.map((client) => {
+              const activeCount = getActiveCount(client.clientId);
+              return (
+                <TouchableOpacity
+                  key={client.clientId}
+                  onPress={() => router.push({ pathname: '/(trainer)/client-detail', params: { id: client.clientId } })}
+                >
+                  <Card style={styles.card}>
+                    <View style={styles.row}>
+                      <View style={styles.avatarCircle}>
+                        <Text style={styles.avatarText}>{client.clientInitials}</Text>
+                      </View>
+                      <View style={styles.info}>
+                        <Text style={styles.clientName}>{client.clientName}</Text>
+                        <Text style={styles.clientGoal}>{client.goal}</Text>
+                        <View style={styles.metaRow}>
+                          <Text style={styles.lastActive}>
+                            {client.lastActive === 'New' ? '🆕 New' : `Active ${client.lastActive}`}
+                          </Text>
+                          {activeCount > 0 && (
+                            <Badge label={`${activeCount} active`} color={colors.accent} />
+                          )}
+                        </View>
+                      </View>
+                      <View style={styles.workoutBadge}>
+                        <Text style={styles.workoutCount}>{client.workoutCount}</Text>
+                        <Text style={styles.workoutLabel}>sessions</Text>
+                      </View>
+                      <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+                    </View>
+                  </Card>
+                </TouchableOpacity>
+              );
+            })}
+          </>
+        )}
+
+        {/* Inactive clients */}
         {inactive.length > 0 && (
           <>
-            <Text style={styles.sectionTitle}>Inactive ({inactive.length})</Text>
+            <SectionHeader title={`Inactive (${inactive.length})`} />
             {inactive.map((client) => (
               <TouchableOpacity
                 key={client.clientId}
@@ -86,7 +110,9 @@ export default function Clients() {
                     <View style={styles.info}>
                       <Text style={styles.clientName}>{client.clientName}</Text>
                       <Text style={styles.clientGoal}>{client.goal}</Text>
-                      <Text style={styles.lastActive}>Last seen {client.lastActive}</Text>
+                      <Text style={styles.lastActive}>
+                        {client.lastActive === 'New' ? 'Never active' : `Last seen ${client.lastActive}`}
+                      </Text>
                     </View>
                     <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
                   </View>
@@ -115,14 +141,6 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     marginTop: spacing.xs,
     marginBottom: spacing.lg,
-  },
-  sectionTitle: {
-    color: colors.textSecondary,
-    fontSize: fontSize.sm,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: spacing.md,
   },
   card: {
     marginBottom: spacing.md,

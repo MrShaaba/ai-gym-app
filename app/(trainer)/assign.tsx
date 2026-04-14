@@ -6,6 +6,7 @@ import { Screen } from '@/components/ui/Screen';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { DayPicker } from '@/components/ui/DayPicker';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { fetchTrainerRoutines, type RoutineRow } from '@/services/programs';
 import { useAssignmentStore } from '@/store/assignmentStore';
 import { useAuthStore } from '@/store/authStore';
@@ -82,11 +83,19 @@ export default function Assign() {
         )}
 
         {!loadingRoutines && routines.length === 0 && (
-          <Card style={{ marginBottom: spacing.md }}>
-            <Text style={{ color: colors.textMuted, textAlign: 'center', paddingVertical: spacing.md }}>
-              No routines yet. Create a program with routines first.
-            </Text>
-          </Card>
+          <>
+            <EmptyState
+              icon="barbell-outline"
+              message="No routines yet. Create a program with routines first, then come back to assign."
+            />
+            <Button
+              title="Go to Programs"
+              icon="albums-outline"
+              variant="outline"
+              onPress={() => router.push('/(trainer)/programs')}
+              style={{ marginBottom: spacing.md }}
+            />
+          </>
         )}
 
         {routines.map((routine) => {

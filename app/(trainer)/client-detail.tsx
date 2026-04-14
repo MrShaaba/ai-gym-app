@@ -6,6 +6,7 @@ import { Screen } from '@/components/ui/Screen';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
+import { SectionHeader } from '@/components/ui/SectionHeader';
 import { useTrainerClients } from '@/hooks/useTrainerClients';
 import { useAssignmentStore } from '@/store/assignmentStore';
 import { useAuthStore } from '@/store/authStore';
@@ -58,6 +59,17 @@ export default function ClientDetail() {
     loadClientPrograms();
   }, [loadClientPrograms]);
 
+  // Compute real stats from local data
+  const activeAssignments = useMemo(
+    () => assignments.filter((a) => a.status !== 'completed'),
+    [assignments],
+  );
+  const completedAssignments = useMemo(
+    () => assignments.filter((a) => a.status === 'completed'),
+    [assignments],
+  );
+  const realAssignmentCount = activeAssignments.length;
+
   if (loading) {
     return (
       <Screen>
@@ -77,9 +89,6 @@ export default function ClientDetail() {
       </Screen>
     );
   }
-
-  const activeAssignments = assignments.filter((a) => a.status !== 'completed');
-  const completedAssignments = assignments.filter((a) => a.status === 'completed');
 
   const handleEndorse = async (programId: string) => {
     if (!trainerId) return;
@@ -109,9 +118,19 @@ export default function ClientDetail() {
             <Text style={styles.avatarText}>{client.clientInitials}</Text>
           </View>
           <View style={styles.headerInfo}>
-            <Text style={styles.clientName}>{client.clientName}</Text>
+            <View style={styles.nameRow}>
+              <Text style={styles.clientName}>{client.clientName}</Text>
+              <Badge
+                label={client.active ? 'Active' : 'Inactive'}
+                color={client.active ? colors.accent : colors.textMuted}
+                size="sm"
+              />
+            </View>
             <Text style={styles.clientGoal}>{client.goal}</Text>
-            <Text style={styles.memberSince}>Member since {client.memberSince}</Text>
+            <Text style={styles.memberSince}>
+              Member since {client.memberSince}
+              {client.lastActive ? `  ·  ${client.lastActive === 'New' ? 'No workouts yet' : `Last active ${client.lastActive}`}` : ''}
+            </Text>
           </View>
         </View>
 
@@ -122,24 +141,22 @@ export default function ClientDetail() {
             <Text style={styles.statLabel}>Workouts</Text>
           </View>
           <View style={styles.statBox}>
-            <Text style={styles.statValue}>{client.assignmentCount}</Text>
-            <Text style={styles.statLabel}>Programs</Text>
+            <Text style={styles.statValue}>{realAssignmentCount}</Text>
+            <Text style={styles.statLabel}>Active Plans</Text>
           </View>
           <View style={styles.statBox}>
-            <Text style={[styles.statValue, { color: client.adherencePercent >= 80 ? colors.accent : '#FACC15' }]}>
-              {client.adherencePercent}%
-            </Text>
+            <Text style={styles.statValue}>{completedAssignments.length}</Text>
+            <Text style={styles.statLabel}>Completed</Text>
+          </View>
+          <View style={styles.statBox}>
+            <Text style={[styles.statValue, { color: colors.textMuted }]}>—</Text>
             <Text style={styles.statLabel}>Adherence</Text>
-          </View>
-          <View style={styles.statBox}>
-            <Text style={styles.statValue}>{client.active ? '✓' : '—'}</Text>
-            <Text style={styles.statLabel}>Active</Text>
           </View>
         </View>
 
         {/* Assign Button */}
         <Button
-          title="Assign Workout"
+          title={realAssignmentCount > 0 ? 'Assign Another Workout' : 'Assign Workout'}
           icon="add-circle-outline"
           onPress={() => router.push({ pathname: '/(trainer)/assign', params: { clientId: client.clientId, clientName: client.clientName } })}
           style={styles.assignBtn}
@@ -148,9 +165,7 @@ export default function ClientDetail() {
         {/* AI Programs to Endorse */}
         {clientPrograms.length > 0 && (
           <>
-            <Text style={styles.sectionTitle}>
-              AI Programs ({clientPrograms.length})
-            </Text>
+            <SectionHeader title={`AI Programs (${clientPrograms.length})`} />
             {clientPrograms.map((p) => (
               <Card key={p.id} style={styles.assignmentCard}>
                 <View style={styles.assignmentHeader}>
@@ -181,9 +196,7 @@ export default function ClientDetail() {
         )}
 
         {/* Active Assignments */}
-        <Text style={styles.sectionTitle}>
-          Active Assignments ({activeAssignments.length})
-        </Text>
+        <SectionHeader title={`Active Assignments (${activeAssignments.length})`} />
 
         {activeAssignments.length === 0 && (
           <Card style={styles.emptyCard}>
@@ -230,9 +243,7 @@ export default function ClientDetail() {
         {/* Completed */}
         {completedAssignments.length > 0 && (
           <>
-            <Text style={styles.sectionTitle}>
-              Completed ({completedAssignments.length})
-            </Text>
+            <SectionHeader title={`Completed (${completedAssignments.length})`} />
             {completedAssignments.map((a) => (
               <View key={a.id} style={styles.completedRow}>
                 <Ionicons name="checkmark-circle" size={16} color={colors.accent} />
@@ -292,6 +303,11 @@ const styles = StyleSheet.create({
   headerInfo: {
     flex: 1,
   },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
   clientName: {
     color: colors.textPrimary,
     fontSize: fontSize.xl,
@@ -324,6 +340,7 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontSize: fontSize.xl,
     fontWeight: '700',
+    fontVariant: ['tabular-nums'],
   },
   statLabel: {
     color: colors.textMuted,
@@ -331,14 +348,6 @@ const styles = StyleSheet.create({
   },
   assignBtn: {
     marginBottom: spacing.xl,
-  },
-  sectionTitle: {
-    color: colors.textSecondary,
-    fontSize: fontSize.sm,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: spacing.md,
   },
   emptyCard: {
     alignItems: 'center',
