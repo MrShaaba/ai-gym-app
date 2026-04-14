@@ -5,9 +5,13 @@ import { useRouter } from 'expo-router';
 import { ClientTabSwipeView } from '@/components/navigation/ClientTabSwipeView';
 import { Screen } from '@/components/ui/Screen';
 import { Card } from '@/components/ui/Card';
+import { SectionHeader } from '@/components/ui/SectionHeader';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { useWorkoutStore } from '@/store/workoutStore';
 import { usePreferencesStore } from '@/store/preferencesStore';
-import { convertKgToUnit, formatWeightWithUnit } from '@/services/units';
+import { convertKgToUnit, formatWeightWithUnit, formatVolumeWithUnit } from '@/services/units';
+import { WeightUnitToggle } from '@/components/ui/WeightUnitToggle';
+import { getWeeklyComparison } from '@/services/workouts';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
 import type { CompletedWorkout, ExerciseLog, WorkoutExerciseGroupType } from '@/types/workout';
 
@@ -99,8 +103,11 @@ export default function Statistics() {
     { label: 'Reps', value: String(totalReps || '—'), sub: 'total', icon: 'repeat-outline' as const },
   ];
 
-  // Build recent workouts list (last 5)
-  const recentWorkouts = history.slice(0, 5);
+  // Weekly comparison (Mon→Sun boundaries)
+  const weekly = useMemo(() => getWeeklyComparison(history), [history]);
+
+  // Build recent workouts list (last 10)
+  const recentWorkouts = history.slice(0, 10);
 
   const toggleExpanded = (workoutId: string) => {
     setExpandedWorkoutId((prev) => (prev === workoutId ? null : workoutId));
@@ -110,7 +117,10 @@ export default function Statistics() {
     <Screen>
       <ClientTabSwipeView routeKey="statistics">
         <ScrollView contentContainerStyle={styles.container}>
-          <Text style={styles.title}>Statistics</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Text style={styles.title}>Statistics</Text>
+            <WeightUnitToggle />
+          </View>
           <Text style={styles.subtitle}>
             {totalWorkouts > 0 ? `${totalWorkouts} workout${totalWorkouts === 1 ? '' : 's'} completed` : 'Complete a workout to see stats'}
           </Text>
@@ -126,13 +136,22 @@ export default function Statistics() {
           ))}
         </View>
 
-        <Text style={styles.sectionTitle}>Recent Workouts</Text>
+        {/* ---- Weekly Comparison ---- */}
+        {(weekly.thisWeek.workouts > 0 || weekly.lastWeek.workouts > 0) && (
+          <Card style={styles.weeklyCard}>
+            <Text style={styles.weeklyTitle}>This Week vs Last Week</Text>
+            <View style={styles.weeklyRow}>
+              <WeeklyCell label="Workouts" thisVal={String(weekly.thisWeek.workouts)} lastVal={String(weekly.lastWeek.workouts)} />
+              <WeeklyCell label="Volume" thisVal={formatVolumeWithUnit(weekly.thisWeek.volume, weightUnit)} lastVal={formatVolumeWithUnit(weekly.lastWeek.volume, weightUnit)} />
+              <WeeklyCell label="Sets" thisVal={String(weekly.thisWeek.sets)} lastVal={String(weekly.lastWeek.sets)} />
+            </View>
+          </Card>
+        )}
+
+        <SectionHeader title="Recent Workouts" trailing={recentWorkouts.length > 0 ? `${recentWorkouts.length} entries` : undefined} />
 
         {recentWorkouts.length === 0 && (
-          <Card style={styles.emptyCard}>
-            <Ionicons name="barbell-outline" size={32} color={colors.textMuted} />
-            <Text style={styles.emptyText}>No workouts yet — start one from the Workout tab!</Text>
-          </Card>
+          <EmptyState icon="barbell-outline" message="No workouts yet — start one from the Workout tab!" />
         )}
 
           {recentWorkouts.map((w) => {
@@ -264,6 +283,20 @@ function ExerciseBreakdownRow({
 }
 
 // ---------------------------------------------------------------------------
+// WeeklyCell sub-component
+// ---------------------------------------------------------------------------
+
+function WeeklyCell({ label, thisVal, lastVal }: { label: string; thisVal: string; lastVal: string }) {
+  return (
+    <View style={styles.weeklyCell}>
+      <Text style={styles.weeklyCellLabel}>{label}</Text>
+      <Text style={styles.weeklyCellThisVal}>{thisVal}</Text>
+      <Text style={styles.weeklyCellLastVal}>{lastVal}</Text>
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -321,6 +354,7 @@ const styles = StyleSheet.create({
     color: colors.accent,
     fontSize: fontSize.hero,
     fontWeight: '700',
+    fontVariant: ['tabular-nums'],
   },
   statLabel: {
     color: colors.textPrimary,
@@ -333,28 +367,10 @@ const styles = StyleSheet.create({
     fontSize: fontSize.xs,
     marginTop: 2,
   },
-  sectionTitle: {
-    color: colors.textSecondary,
-    fontSize: fontSize.sm,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: spacing.md,
-  },
-  emptyCard: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.xl,
-    gap: spacing.sm,
-    marginBottom: spacing.xl,
-  },
-  emptyText: {
-    color: colors.textMuted,
-    fontSize: fontSize.sm,
-    textAlign: 'center',
-  },
   prCard: {
     marginBottom: spacing.sm,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.accent,
   },
   prRow: {
     flexDirection: 'row',
@@ -389,6 +405,7 @@ const styles = StyleSheet.create({
     color: colors.accent,
     fontSize: fontSize.lg,
     fontWeight: '700',
+    fontVariant: ['tabular-nums'],
   },
   expandIcon: {
     marginTop: 2,
@@ -459,5 +476,45 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     fontSize: fontSize.xs,
     marginTop: 1,
+  },
+
+  // Weekly comparison styles
+  weeklyCard: {
+    marginBottom: spacing.xl,
+  },
+  weeklyTitle: {
+    color: colors.textPrimary,
+    fontSize: fontSize.md,
+    fontWeight: '600',
+    marginBottom: spacing.md,
+  },
+  weeklyRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: spacing.sm,
+  },
+  weeklyCell: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  weeklyCellLabel: {
+    color: colors.textMuted,
+    fontSize: fontSize.xs,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: spacing.xs,
+  },
+  weeklyCellThisVal: {
+    color: colors.accent,
+    fontSize: fontSize.lg,
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
+  },
+  weeklyCellLastVal: {
+    color: colors.textSecondary,
+    fontSize: fontSize.sm,
+    marginTop: 2,
+    fontVariant: ['tabular-nums'],
   },
 });

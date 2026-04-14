@@ -2,7 +2,6 @@ import { useState, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, FlatList, Pressable, TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { ClientTabSwipeView } from '@/components/navigation/ClientTabSwipeView';
 import { Screen } from '@/components/ui/Screen';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -115,7 +114,6 @@ export default function Discover() {
 
   return (
     <Screen>
-      <ClientTabSwipeView routeKey="discover">
         <View style={styles.container}>
           <Text style={styles.heading}>Discover Trainers</Text>
 
@@ -180,7 +178,6 @@ export default function Discover() {
             }
           />
         </View>
-      </ClientTabSwipeView>
     </Screen>
   );
 }

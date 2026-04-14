@@ -26,18 +26,9 @@ export default function ClientLayout() {
         }}
       />
       <Tabs.Screen
-        name="programs"
+        name="plans"
         options={{
-          title: 'Programs',
-          tabBarIcon: ({ color, size }) => (
-            <TabBarIcon name="list-outline" color={color} size={size} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="schedule"
-        options={{
-          title: 'Schedule',
+          title: 'Plans',
           tabBarIcon: ({ color, size }) => (
             <TabBarIcon name="calendar-outline" color={color} size={size} />
           ),
@@ -46,7 +37,7 @@ export default function ClientLayout() {
       <Tabs.Screen
         name="statistics"
         options={{
-          title: 'Statistics',
+          title: 'Stats',
           tabBarIcon: ({ color, size }) => (
             <TabBarIcon name="stats-chart-outline" color={color} size={size} />
           ),
@@ -61,15 +52,10 @@ export default function ClientLayout() {
           ),
         }}
       />
-      <Tabs.Screen
-        name="discover"
-        options={{
-          title: 'Discover',
-          tabBarIcon: ({ color, size }) => (
-            <TabBarIcon name="search-outline" color={color} size={size} />
-          ),
-        }}
-      />
+      {/* Hidden routes */}
+      <Tabs.Screen name="programs" options={{ href: null }} />
+      <Tabs.Screen name="schedule" options={{ href: null }} />
+      <Tabs.Screen name="discover" options={{ href: null }} />
       <Tabs.Screen name="trainer-profile" options={{ href: null, tabBarStyle: { display: 'none' } }} />
       <Tabs.Screen name="create-program" options={{ href: null, tabBarStyle: { display: 'none' } }} />
       <Tabs.Screen name="create-routine" options={{ href: null, tabBarStyle: { display: 'none' } }} />

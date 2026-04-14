@@ -5,6 +5,7 @@ import { ClientTabSwipeView } from '@/components/navigation/ClientTabSwipeView';
 import { Screen } from '@/components/ui/Screen';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { SectionHeader } from '@/components/ui/SectionHeader';
 import { useAuthStore } from '@/store/authStore';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
 
@@ -48,7 +49,7 @@ export default function Profile() {
             )}
           </View>
 
-        <Text style={styles.sectionTitle}>Activity</Text>
+        <SectionHeader title="Activity" />
         <Card style={styles.card}>
           {activityItems.map((a, i) => (
             <View key={a.label} style={[styles.row, i < activityItems.length - 1 && styles.rowBorder]}>
@@ -59,6 +60,7 @@ export default function Profile() {
         </Card>
 
           <View style={styles.actions}>
+            <Button title="Discover Trainers" icon="search-outline" variant="secondary" onPress={() => router.push('/(client)/discover')} />
             <Button title="Settings" icon="settings-outline" variant="secondary" onPress={() => router.push('/(shared)/settings')} />
             <Button title="Subscription" icon="card-outline" variant="secondary" onPress={() => router.push('/(shared)/subscription')} />
             <Button title="Sign Out" icon="log-out-outline" variant="outline" onPress={handleSignOut} />
@@ -101,14 +103,6 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontSize: fontSize.sm,
     marginTop: 2,
-  },
-  sectionTitle: {
-    color: colors.textSecondary,
-    fontSize: fontSize.sm,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: spacing.md,
   },
   card: {
     marginBottom: spacing.lg,

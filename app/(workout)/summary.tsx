@@ -6,8 +6,10 @@ import { Screen } from '@/components/ui/Screen';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { PlanBadge } from '@/components/ui/PlanBadge';
+import { SectionHeader } from '@/components/ui/SectionHeader';
 import { useWorkoutStore } from '@/store/workoutStore';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
+import { WeightUnitToggle } from '@/components/ui/WeightUnitToggle';
 import { usePreferencesStore } from '@/store/preferencesStore';
 import { formatVolumeWithUnit, formatWeightWithUnit } from '@/services/units';
 import type { AssignmentSource } from '@/types/assignment';
@@ -238,6 +240,8 @@ export default function WorkoutSummary() {
           <View style={styles.heroMetricHeader}>
             <Ionicons name={heroMetric.icon} size={18} color={colors.accent} />
             <Text style={styles.heroMetricLabel}>{heroMetric.label}</Text>
+            <View style={{ flex: 1 }} />
+            <WeightUnitToggle />
           </View>
           <Text style={styles.heroMetricValue}>{heroMetric.value}</Text>
           <Text style={styles.heroMetricInsight}>{heroMetric.insight}</Text>
@@ -259,7 +263,7 @@ export default function WorkoutSummary() {
 
         {achievements.length > 0 ? (
           <Card style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Achievements</Text>
+            <SectionHeader title="Achievements" />
             {achievements.map((item, index) => (
               <View
                 key={item.label}
@@ -309,9 +313,9 @@ export default function WorkoutSummary() {
 
           <View style={styles.secondaryActions}>
             <Button
-              title="Go to Schedule"
+              title="Go to Plans"
               variant="outline"
-              onPress={() => router.push('/(client)/schedule')}
+              onPress={() => router.push('/(client)/plans')}
               style={styles.secondaryBtn}
             />
           </View>
@@ -319,7 +323,7 @@ export default function WorkoutSummary() {
 
         {showBreakdown ? (
           <View style={styles.breakdownSection}>
-            <Text style={styles.sectionTitle}>Workout Breakdown</Text>
+            <SectionHeader title="Workout Breakdown" />
             {buildBreakdownBlocks(latest.exercises).map((block) => {
               if (block.type === 'group') {
                 return (
@@ -417,12 +421,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.xl,
   },
-  sectionTitle: {
-    color: colors.textPrimary,
-    fontSize: fontSize.md,
-    fontWeight: '600',
-    marginBottom: spacing.md,
-  },
   ctaGroup: {
     marginTop: spacing.sm,
     marginBottom: spacing.xl,
@@ -487,6 +485,7 @@ const styles = StyleSheet.create({
     fontSize: fontSize.hero,
     fontWeight: '800',
     lineHeight: fontSize.hero + 4,
+    fontVariant: ['tabular-nums'],
   },
   heroMetricInsight: {
     color: colors.textSecondary,
@@ -517,6 +516,7 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontSize: fontSize.lg,
     fontWeight: '700',
+    fontVariant: ['tabular-nums'],
   },
   recapLabel: {
     color: colors.textSecondary,
@@ -558,6 +558,7 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     fontWeight: '700',
     textAlign: 'right',
+    fontVariant: ['tabular-nums'],
   },
   contextHeader: {
     flexDirection: 'row',

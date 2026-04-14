@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { PlanBadge } from '@/components/ui/PlanBadge';
+import { SectionHeader } from '@/components/ui/SectionHeader';
 import { useWorkoutStore } from '@/store/workoutStore';
 import { useAssignmentStore } from '@/store/assignmentStore';
 import { useUserId } from '@/hooks/useUserId';
@@ -135,7 +136,7 @@ export default function Workout() {
         {unreadCount > 0 && (
           <TouchableOpacity style={styles.notifBanner} onPress={markAllRead}>
             <View style={styles.notifLeft}>
-              <Ionicons name="notifications" size={18} color="#60A5FA" />
+              <Ionicons name="notifications" size={18} color={colors.infoLight} />
               <Text style={styles.notifText}>
                 {unreadCount} new notification{unreadCount !== 1 ? 's' : ''} from your trainer
               </Text>
@@ -176,9 +177,9 @@ export default function Workout() {
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.sectionTitle}>
-          {selectedDayIdx === todayIdx ? "Today's Routine" : `${selectedDayLabel}'s Routine`}
-        </Text>
+        <SectionHeader
+          title={selectedDayIdx === todayIdx ? "Today's Routine" : `${selectedDayLabel}'s Routine`}
+        />
 
         {activeDayRoutine ? (
           <Card style={styles.selectedRoutineCard}>
@@ -229,11 +230,12 @@ export default function Workout() {
           </Card>
         )}
 
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <SectionHeader title="Quick Actions" />
           <View style={styles.quickActions}>
             <Button
               title={BUTTONS.generateWorkout}
               icon="sparkles-outline"
+              variant="outline"
               onPress={() => router.push('/(client)/generate')}
               style={styles.actionBtn}
             />
@@ -359,8 +361,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#60A5FA' + '15',
-    borderColor: '#60A5FA' + '40',
+    backgroundColor: colors.infoLight + '15',
+    borderColor: colors.infoLight + '40',
     borderWidth: 1,
     borderRadius: borderRadius.lg,
     padding: spacing.md,
@@ -378,17 +380,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   notifDismiss: {
-    color: '#60A5FA',
+    color: colors.infoLight,
     fontSize: fontSize.xs,
     fontWeight: '600',
-  },
-  sectionTitle: {
-    color: colors.textSecondary,
-    fontSize: fontSize.sm,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: spacing.md,
   },
   routineRow: {
     flexDirection: 'row',

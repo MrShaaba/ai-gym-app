@@ -4,11 +4,9 @@ import { useRouter } from 'expo-router';
 
 const CLIENT_TAB_ROUTES = [
   { key: 'workout', href: '/(client)/workout' },
-  { key: 'programs', href: '/(client)/programs' },
-  { key: 'schedule', href: '/(client)/schedule' },
+  { key: 'plans', href: '/(client)/plans' },
   { key: 'statistics', href: '/(client)/statistics' },
   { key: 'profile', href: '/(client)/profile' },
-  { key: 'discover', href: '/(client)/discover' },
 ] as const;
 
 export type ClientTabRouteKey = (typeof CLIENT_TAB_ROUTES)[number]['key'];

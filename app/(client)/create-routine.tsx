@@ -34,6 +34,7 @@ import { formatWeightWithUnit, formatWeightValue, getWarmupReps, getWarmupWeight
 import { useEntitlement } from '@/hooks/useEntitlement';
 import { useFeatureGate } from '@/hooks/useFeatureGate';
 import { useUserId } from '@/hooks/useUserId';
+import { WeightUnitToggle } from '@/components/ui/WeightUnitToggle';
 import { useAssignmentStore } from '@/store/assignmentStore';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
 import type {
@@ -704,7 +705,10 @@ export default function ClientCreateRoutine() {
         </Card>
 
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Exercises ({selectedExercises.length})</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+            <Text style={styles.sectionTitle}>Exercises ({selectedExercises.length})</Text>
+            <WeightUnitToggle />
+          </View>
           <TouchableOpacity onPress={() => setShowPicker((current) => !current)}>
             <Ionicons
               name={showPicker ? 'close-circle' : 'add-circle'}

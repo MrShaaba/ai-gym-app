@@ -2,11 +2,11 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-nati
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useMemo } from 'react';
-import { ClientTabSwipeView } from '@/components/navigation/ClientTabSwipeView';
 import { Screen } from '@/components/ui/Screen';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { PlanBadge } from '@/components/ui/PlanBadge';
+import { SectionHeader } from '@/components/ui/SectionHeader';
 import { DAY_ROUTINE_REASON_LABEL, EMPTY, HELPER } from '@/config/copy';
 import { useAssignmentStore } from '@/store/assignmentStore';
 import { useWorkoutStore } from '@/store/workoutStore';
@@ -25,7 +25,7 @@ function getPlanBadgeSource(source: WorkoutPlanSource | undefined) {
   return 'ai' as const;
 }
 
-export default function Schedule() {
+export function ScheduleContent() {
   const router = useRouter();
   const userId = useUserId();
   const allAssignments = useAssignmentStore((s) => s.assignments);
@@ -50,14 +50,13 @@ export default function Schedule() {
   };
 
   const statusColor: Record<string, string> = {
-    assigned: '#60A5FA',
-    in_progress: '#FACC15',
+    assigned: colors.infoLight,
+    in_progress: colors.warningLight,
   };
 
   return (
-    <Screen>
-      <ClientTabSwipeView routeKey="schedule">
-        <ScrollView contentContainerStyle={styles.container}>
+    <>
+      <ScrollView contentContainerStyle={styles.container}>
           <Text style={styles.title}>Today's Schedule</Text>
           <Text style={styles.subtitle}>
             {activeDayCount > 0
@@ -138,7 +137,14 @@ export default function Schedule() {
             );
           })}
         </ScrollView>
-      </ClientTabSwipeView>
+    </>
+  );
+}
+
+export default function Schedule() {
+  return (
+    <Screen>
+      <ScheduleContent />
     </Screen>
   );
 }

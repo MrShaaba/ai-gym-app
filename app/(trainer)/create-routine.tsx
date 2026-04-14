@@ -28,6 +28,7 @@ import {
   parseWeightInputToKg,
 } from '@/services/units';
 import { useFeatureGate } from '@/hooks/useFeatureGate';
+import { WeightUnitToggle } from '@/components/ui/WeightUnitToggle';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
 import type {
   Difficulty,
@@ -468,7 +469,10 @@ export default function TrainerCreateRoutine() {
 
           {/* ---- Exercises header ---- */}
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Exercises ({selectedExercises.length})</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+              <Text style={styles.sectionTitle}>Exercises ({selectedExercises.length})</Text>
+              <WeightUnitToggle />
+            </View>
             <TouchableOpacity onPress={() => setShowPicker((c) => !c)}>
               <Ionicons
                 name={showPicker ? 'close-circle' : 'add-circle'}

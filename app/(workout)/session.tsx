@@ -9,6 +9,7 @@ import { ExerciseCard } from '@/components/workout/ExerciseCard';
 import { ExerciseGroupCard } from '@/components/workout/ExerciseGroupCard';
 import { RestTimer } from '@/components/workout/RestTimer';
 import { ReflectionSheet } from '@/components/workout/ReflectionSheet';
+import { WeightUnitToggle } from '@/components/ui/WeightUnitToggle';
 import { useWorkoutStore } from '@/store/workoutStore';
 import { useAuthStore } from '@/store/authStore';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
@@ -210,7 +211,10 @@ export default function WorkoutSession() {
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Text style={styles.routineName} numberOfLines={1}>{session.routineName}</Text>
-          <Text style={styles.elapsed}>{elapsedDisplay}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: 2 }}>
+            <Text style={styles.elapsed}>{elapsedDisplay}</Text>
+            <WeightUnitToggle />
+          </View>
           {session.status === 'paused' ? <Text style={styles.statusLabel}>Paused</Text> : null}
         </View>
         <TouchableOpacity onPress={handleFinish} style={styles.headerBtn}>

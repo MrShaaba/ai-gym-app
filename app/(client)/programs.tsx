@@ -2,12 +2,13 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, Alert, Pre
 import { useEffect, useMemo, useState } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ClientTabSwipeView } from '@/components/navigation/ClientTabSwipeView';
 import { Screen } from '@/components/ui/Screen';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { PlanBadge } from '@/components/ui/PlanBadge';
+import { SectionHeader } from '@/components/ui/SectionHeader';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { useAssignmentStore } from '@/store/assignmentStore';
 import { useUserId } from '@/hooks/useUserId';
 import { usePrograms } from '@/hooks/usePrograms';
@@ -27,12 +28,12 @@ import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
 const ALL_DAYS: DayOfWeek[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 const difficultyColor: Record<string, string> = {
-  beginner: '#4ADE80',
-  intermediate: '#FACC15',
-  advanced: '#F87171',
+  beginner: colors.accent,
+  intermediate: colors.warningLight,
+  advanced: colors.dangerLight,
 };
 
-export default function Programs() {
+export function ProgramsContent() {
   const router = useRouter();
   const { refresh } = useLocalSearchParams<{ refresh?: string }>();
   const userId = useUserId();
@@ -72,9 +73,9 @@ export default function Programs() {
   }
 
   const assignmentStatusColor: Record<string, string> = {
-    assigned: '#60A5FA',
-    in_progress: '#FACC15',
-    completed: '#4ADE80',
+    assigned: colors.infoLight,
+    in_progress: colors.warningLight,
+    completed: colors.accent,
   };
 
   const toggleDay = (d: DayOfWeek) => {
@@ -239,9 +240,8 @@ export default function Programs() {
   }, [programs, userId]);
 
   return (
-    <Screen>
-      <ClientTabSwipeView routeKey="programs" enabled={!pickerProgram && !pickerRoutine}>
-        <ScrollView contentContainerStyle={styles.container}>
+    <>
+      <ScrollView contentContainerStyle={styles.container}>
           <Text style={styles.title}>My Plans</Text>
           <Text style={styles.subtitle}>
             {loading ? 'Loading…' : HELPER.planIntro}
@@ -255,9 +255,7 @@ export default function Programs() {
         />
 
         {!loading && visiblePrograms.length === 0 && customRoutines.length === 0 && (
-          <Card style={styles.card}>
-            <Text style={styles.emptyText}>{EMPTY.noPlansCTA}</Text>
-          </Card>
+          <EmptyState icon="barbell-outline" message={EMPTY.noPlansCTA} />
         )}
 
         {visiblePrograms.map((p) => {
@@ -307,7 +305,7 @@ export default function Programs() {
 
         {customRoutines.length > 0 && (
           <>
-            <Text style={styles.sectionTitle}>{CUSTOM_ROUTINE_CONTAINER_NAME}</Text>
+            <SectionHeader title={CUSTOM_ROUTINE_CONTAINER_NAME} />
             {customRoutines.map((routine) => (
               <Card key={routine.id} style={styles.card}>
                 <View style={styles.row}>
@@ -344,7 +342,7 @@ export default function Programs() {
                     onPress={() => handleDeleteRoutine(routine)}
                     disabled={deletingRoutineId === routine.id}
                   >
-                    <Ionicons name="trash-outline" size={14} color="#F87171" />
+                    <Ionicons name="trash-outline" size={14} color={colors.dangerLight} />
                     <Text style={styles.deleteBtnText}>{deletingRoutineId === routine.id ? 'Deleting…' : 'Delete'}</Text>
                   </TouchableOpacity>
                 </View>
@@ -361,7 +359,6 @@ export default function Programs() {
             style={styles.aiBtn}
           />
         </ScrollView>
-      </ClientTabSwipeView>
 
       {/* Day picker modal */}
       <Modal
@@ -430,6 +427,14 @@ export default function Programs() {
           </TouchableOpacity>
         </View>
       </Modal>
+    </>
+  );
+}
+
+export default function Programs() {
+  return (
+    <Screen>
+      <ProgramsContent />
     </Screen>
   );
 }
@@ -450,26 +455,11 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
     marginBottom: spacing.lg,
   },
-  emptyText: {
-    color: colors.textMuted,
-    fontSize: fontSize.sm,
-    textAlign: 'center',
-    paddingVertical: spacing.md,
-  },
   card: {
     marginBottom: spacing.md,
   },
   createRoutineBtn: {
     marginBottom: spacing.md,
-  },
-  sectionTitle: {
-    color: colors.textSecondary,
-    fontSize: fontSize.sm,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: spacing.md,
-    marginTop: spacing.sm,
   },
   row: {
     flexDirection: 'row',
@@ -546,11 +536,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   deleteBtn: {
-    borderColor: '#F87171' + '60',
-    backgroundColor: '#F87171' + '12',
+    borderColor: colors.dangerLight + '60',
+    backgroundColor: colors.dangerLight + '12',
   },
   deleteBtnText: {
-    color: '#F87171',
+    color: colors.dangerLight,
     fontSize: fontSize.xs,
     fontWeight: '700',
   },

@@ -6,6 +6,7 @@ import { Screen } from '@/components/ui/Screen';
 import { Button } from '@/components/ui/Button';
 import { ExerciseCard } from '@/components/workout/ExerciseCard';
 import { ExerciseGroupCard } from '@/components/workout/ExerciseGroupCard';
+import { WeightUnitToggle } from '@/components/ui/WeightUnitToggle';
 import { useWorkoutStore } from '@/store/workoutStore';
 import { useAuthStore } from '@/store/authStore';
 import { colors, fontSize, spacing } from '@/config/theme';
@@ -188,7 +189,10 @@ export default function EditWorkoutScreen() {
             <Ionicons name="chevron-back" size={20} color={colors.textPrimary} />
             <Text style={styles.backText}>Back</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>Edit Workout</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Text style={styles.title}>Edit Workout</Text>
+            <WeightUnitToggle />
+          </View>
           <Text style={styles.subtitle}>Duration stays frozen at {Math.round(draft.durationSeconds / 60)} min.</Text>
         </View>
 
