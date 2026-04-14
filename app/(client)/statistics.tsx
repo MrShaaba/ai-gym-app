@@ -1,21 +1,29 @@
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { ClientTabSwipeView } from '@/components/navigation/ClientTabSwipeView';
 import { Screen } from '@/components/ui/Screen';
 import { Card } from '@/components/ui/Card';
 import { useWorkoutStore } from '@/store/workoutStore';
+import { usePreferencesStore } from '@/store/preferencesStore';
+import { convertKgToUnit } from '@/services/units';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
 
 export default function Statistics() {
+  const router = useRouter();
   const history = useWorkoutStore((s) => s.history);
+  const weightUnit = usePreferencesStore((s) => s.weightUnit);
 
   const totalWorkouts = history.length;
   const totalVolume = history.reduce((sum, w) => sum + w.totalVolume, 0);
   const totalSets = history.reduce((sum, w) => sum + w.totalSets, 0);
   const totalReps = history.reduce((sum, w) => sum + w.totalReps, 0);
 
+  const totalVolumeInUnit = convertKgToUnit(totalVolume, weightUnit);
+
   const stats = [
     { label: 'Workouts', value: String(totalWorkouts || '—'), sub: 'all time', icon: 'barbell-outline' as const },
-    { label: 'Volume', value: totalVolume > 0 ? `${(totalVolume / 1000).toFixed(1)}k` : '—', sub: 'kg lifted', icon: 'trending-up-outline' as const },
+    { label: 'Volume', value: totalVolumeInUnit > 0 ? `${(totalVolumeInUnit / 1000).toFixed(1)}k` : '—', sub: `${weightUnit} lifted`, icon: 'trending-up-outline' as const },
     { label: 'Sets', value: String(totalSets || '—'), sub: 'completed', icon: 'layers-outline' as const },
     { label: 'Reps', value: String(totalReps || '—'), sub: 'total', icon: 'repeat-outline' as const },
   ];
@@ -24,11 +32,12 @@ export default function Statistics() {
   const recentWorkouts = history.slice(0, 5);
   return (
     <Screen>
-      <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>Statistics</Text>
-        <Text style={styles.subtitle}>
-          {totalWorkouts > 0 ? `${totalWorkouts} workout${totalWorkouts === 1 ? '' : 's'} completed` : 'Complete a workout to see stats'}
-        </Text>
+      <ClientTabSwipeView routeKey="statistics">
+        <ScrollView contentContainerStyle={styles.container}>
+          <Text style={styles.title}>Statistics</Text>
+          <Text style={styles.subtitle}>
+            {totalWorkouts > 0 ? `${totalWorkouts} workout${totalWorkouts === 1 ? '' : 's'} completed` : 'Complete a workout to see stats'}
+          </Text>
 
         <View style={styles.grid}>
           {stats.map((s) => (
@@ -50,26 +59,32 @@ export default function Statistics() {
           </Card>
         )}
 
-        {recentWorkouts.map((w) => {
-          const mins = Math.round(w.durationSeconds / 60);
-          const date = new Date(w.completedAt);
-          const timeAgo = getTimeAgo(date);
-          return (
-            <Card key={w.id} style={styles.prCard}>
-              <View style={styles.prRow}>
-                <View style={styles.prIcon}>
-                  <Ionicons name="checkmark-circle" size={16} color={colors.accent} />
-                </View>
-                <View style={styles.prInfo}>
-                  <Text style={styles.prExercise}>{w.routineName}</Text>
-                  <Text style={styles.prDate}>{timeAgo}  ·  {mins} min  ·  {w.totalSets} sets</Text>
-                </View>
-                <Text style={styles.prValue}>{(w.totalVolume / 1000).toFixed(1)}k kg</Text>
-              </View>
-            </Card>
-          );
-        })}
-      </ScrollView>
+          {recentWorkouts.map((w) => {
+            const mins = Math.round(w.durationSeconds / 60);
+            const date = new Date(w.completedAt);
+            const timeAgo = getTimeAgo(date);
+            return (
+              <TouchableOpacity
+                key={w.id}
+                onPress={() => router.push({ pathname: '/(workout)/edit', params: { workoutId: w.id } })}
+              >
+                <Card style={styles.prCard}>
+                  <View style={styles.prRow}>
+                    <View style={styles.prIcon}>
+                      <Ionicons name="checkmark-circle" size={16} color={colors.accent} />
+                    </View>
+                    <View style={styles.prInfo}>
+                      <Text style={styles.prExercise}>{w.routineName}</Text>
+                     <Text style={styles.prDate}>{timeAgo}  ·  {mins} min  ·  {w.totalSets} sets</Text>
+                   </View>
+                   <Text style={styles.prValue}>{(convertKgToUnit(w.totalVolume, weightUnit) / 1000).toFixed(1)}k {weightUnit}</Text>
+                  </View>
+                </Card>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </ClientTabSwipeView>
     </Screen>
   );
 }

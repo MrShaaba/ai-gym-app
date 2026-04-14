@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { usePreferencesStore } from '@/store/preferencesStore';
 import { Card } from '@/components/ui/Card';
 import { SetRow } from '@/components/workout/SetRow';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
@@ -15,7 +16,7 @@ interface ExerciseCardProps {
   onToggleSet: (setIndex: number) => void;
   onAddSet: () => void;
   onRemoveSet: (setIndex: number) => void;
-  onRestTimer: () => void;
+  onRestTimer?: () => void;
 }
 
 export function ExerciseCard({
@@ -29,9 +30,12 @@ export function ExerciseCard({
   onRemoveSet,
   onRestTimer,
 }: ExerciseCardProps) {
-  const completedSets = exerciseLog.sets.filter((s) => s.completed).length;
-  const totalSets = exerciseLog.sets.length;
-  const allDone = completedSets === totalSets;
+  const weightUnit = usePreferencesStore((s) => s.weightUnit);
+  const workingSets = exerciseLog.sets.filter((set) => !set.isWarmup);
+  const warmupSets = exerciseLog.sets.filter((set) => set.isWarmup);
+  const completedSets = workingSets.filter((s) => s.completed).length;
+  const totalSets = workingSets.length;
+  const allDone = totalSets > 0 && completedSets === totalSets;
 
   return (
     <Card style={[styles.card, isActive && styles.cardActive]}>
@@ -47,7 +51,7 @@ export function ExerciseCard({
               {exerciseLog.exerciseName}
             </Text>
             <Text style={styles.setCount}>
-              {completedSets}/{totalSets} sets
+              {completedSets}/{totalSets} working sets{warmupSets.length ? ` · ${warmupSets.length} warm-up` : ''}
             </Text>
           </View>
         </View>
@@ -62,7 +66,7 @@ export function ExerciseCard({
         <View style={styles.body}>
           <View style={styles.colHeaders}>
             <Text style={[styles.colLabel, { width: 20 }]}>SET</Text>
-            <Text style={[styles.colLabel, { flex: 1 }]}>WEIGHT</Text>
+            <Text style={[styles.colLabel, { flex: 1 }]}>{weightUnit.toUpperCase()}</Text>
             <Text style={[styles.colLabel, { flex: 1 }]}>REPS</Text>
             <Text style={[styles.colLabel, { width: 36 }]} />
           </View>
@@ -84,10 +88,12 @@ export function ExerciseCard({
               <Ionicons name="add-circle-outline" size={18} color={colors.accent} />
               <Text style={styles.actionText}>Add Set</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={onRestTimer} style={styles.actionBtn}>
-              <Ionicons name="timer-outline" size={18} color={colors.accent} />
-              <Text style={styles.actionText}>Rest Timer</Text>
-            </TouchableOpacity>
+            {onRestTimer ? (
+              <TouchableOpacity onPress={onRestTimer} style={styles.actionBtn}>
+                <Ionicons name="timer-outline" size={18} color={colors.accent} />
+                <Text style={styles.actionText}>Rest Timer</Text>
+              </TouchableOpacity>
+            ) : null}
           </View>
         </View>
       )}

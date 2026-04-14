@@ -2,27 +2,35 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-nati
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useMemo } from 'react';
+import { ClientTabSwipeView } from '@/components/navigation/ClientTabSwipeView';
 import { Screen } from '@/components/ui/Screen';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { PlanBadge } from '@/components/ui/PlanBadge';
+import { DAY_ROUTINE_REASON_LABEL, EMPTY, HELPER } from '@/config/copy';
 import { useAssignmentStore } from '@/store/assignmentStore';
 import { useWorkoutStore } from '@/store/workoutStore';
 import { useUserId } from '@/hooks/useUserId';
-import { EMPTY } from '@/config/copy';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
-import type { DayOfWeek, Assignment } from '@/types/assignment';
-import type { WorkoutRoutine } from '@/types/workout';
+import type { DayOfWeek } from '@/types/assignment';
+import type { WorkoutPlanSource, WorkoutRoutine } from '@/types/workout';
 
 const DAYS: DayOfWeek[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-const DAY_INDEX: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
 const todayIndex = new Date().getDay();
 const todayLabel = DAYS[(todayIndex + 6) % 7]; // convert Sun=0 to Mon-first
+
+function getPlanBadgeSource(source: WorkoutPlanSource | undefined) {
+  if (source === 'trainer') return 'trainer' as const;
+  if (source === 'self') return 'self' as const;
+  return 'ai' as const;
+}
 
 export default function Schedule() {
   const router = useRouter();
   const userId = useUserId();
   const allAssignments = useAssignmentStore((s) => s.assignments);
+  const daySelections = useAssignmentStore((s) => s.daySelections);
+  const resolveDayRoutineForDay = useAssignmentStore((s) => s.resolveDayRoutine);
   const assignments = useMemo(
     () => allAssignments.filter((a) => a.clientId === userId),
     [allAssignments, userId],
@@ -30,21 +38,13 @@ export default function Schedule() {
   const startWorkout = useWorkoutStore((s) => s.startWorkout);
   const activeSession = useWorkoutStore((s) => s.activeSession);
 
-  const active = assignments.filter((a) => a.status !== 'completed');
+  const dayMap = useMemo(
+    () => new Map(DAYS.map((day) => [day, resolveDayRoutineForDay(userId, day)])),
+    [resolveDayRoutineForDay, userId, assignments, daySelections],
+  );
+  const activeDayCount = Array.from(dayMap.values()).filter((resolution) => resolution.activeRoutine).length;
 
-  const dayMap = new Map<DayOfWeek, typeof active>();
-  for (const day of DAYS) {
-    dayMap.set(day, active.filter((a) => a.scheduleDays.includes(day)));
-  }
-
-  const handleStart = (assignment: Assignment) => {
-    if (!assignment.exercisesJson || assignment.exercisesJson.length === 0) return;
-    const routine: WorkoutRoutine = {
-      id: assignment.routineId,
-      name: assignment.routineName,
-      exercises: assignment.exercisesJson,
-      difficulty: 'intermediate',
-    };
+  const handleStart = (routine: WorkoutRoutine) => {
     startWorkout(routine);
     router.push('/(workout)/session');
   };
@@ -56,73 +56,89 @@ export default function Schedule() {
 
   return (
     <Screen>
-      <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.title}>Today's Schedule</Text>
-        <Text style={styles.subtitle}>
-          {active.length > 0
-            ? `${active.length} active plan${active.length !== 1 ? 's' : ''}`
-            : EMPTY.noSchedule}
-        </Text>
+      <ClientTabSwipeView routeKey="schedule">
+        <ScrollView contentContainerStyle={styles.container}>
+          <Text style={styles.title}>Today's Schedule</Text>
+          <Text style={styles.subtitle}>
+            {activeDayCount > 0
+              ? `${activeDayCount} active day owner${activeDayCount !== 1 ? 's' : ''}`
+              : EMPTY.noSchedule}
+          </Text>
 
-        {DAYS.map((day) => {
-          const items = dayMap.get(day) ?? [];
-          const isToday = day === todayLabel;
-          return (
-            <View key={day}>
+          {DAYS.map((day) => {
+            const resolution = dayMap.get(day)!;
+            const item = resolution.activeRoutine;
+            const isToday = day === todayLabel;
+            return (
+              <View key={day}>
               <View style={styles.dayHeader}>
                 <Text style={[styles.dayLabel, isToday && styles.dayLabelToday]}>
                   {day}{isToday ? '  ·  Today' : ''}
                 </Text>
-                {items.length > 0 && (
-                  <Text style={styles.dayCount}>{items.length}</Text>
+                {item && (
+                  <Text style={styles.dayCount}>{DAY_ROUTINE_REASON_LABEL[resolution.reason]}</Text>
                 )}
               </View>
 
-              {items.length === 0 ? (
+              {!item ? (
                 <View style={styles.restCard}>
                   <Ionicons name="bed-outline" size={16} color={colors.textMuted} />
                   <Text style={styles.restText}>Rest day</Text>
                 </View>
               ) : (
-                items.map((a) => (
-                  <Card key={a.id} style={styles.card}>
-                    <View style={styles.row}>
-                      <View style={styles.info}>
-                        <Text style={styles.routineName}>{a.routineName}</Text>
-                        {a.programName && (
-                          <Text style={styles.programName}>{a.programName}</Text>
+                <Card style={styles.card}>
+                  <View style={styles.row}>
+                    <View style={styles.info}>
+                      <Text style={styles.routineName}>{item.name}</Text>
+                      {(resolution.activeAssignment?.programName ?? item.programName) && (
+                        <Text style={styles.programName}>{resolution.activeAssignment?.programName ?? item.programName}</Text>
+                      )}
+                      <View style={styles.badgeRow}>
+                        {item.source && (
+                          <PlanBadge source={getPlanBadgeSource(item.source)} />
                         )}
-                        <View style={styles.badgeRow}>
-                          <PlanBadge source={a.source ?? 'trainer'} />
+                        <Badge
+                          label={DAY_ROUTINE_REASON_LABEL[resolution.reason]}
+                          color={resolution.isManualOverride ? colors.accent : colors.textSecondary}
+                          size="sm"
+                        />
+                        {resolution.activeAssignment && (
                           <Badge
-                            label={a.status.replace('_', ' ')}
-                            color={statusColor[a.status] ?? colors.accent}
+                            label={resolution.activeAssignment.status.replace('_', ' ')}
+                            color={statusColor[resolution.activeAssignment.status] ?? colors.accent}
                             size="sm"
                           />
-                        </View>
+                        )}
                       </View>
-                      {isToday && !activeSession && (
-                        <TouchableOpacity
-                          style={styles.startBtn}
-                          onPress={() => handleStart(a)}
-                        >
-                          <Ionicons name="play" size={18} color={colors.background} />
-                        </TouchableOpacity>
-                      )}
                     </View>
-                    {a.note && (
-                      <View style={styles.noteRow}>
-                        <Ionicons name="chatbubble-outline" size={12} color={colors.textMuted} />
-                        <Text style={styles.noteText}>{a.note}</Text>
-                      </View>
+                    {isToday && !activeSession && (
+                      <TouchableOpacity
+                        style={styles.startBtn}
+                        onPress={() => handleStart(item)}
+                      >
+                        <Ionicons name="play" size={18} color={colors.background} />
+                      </TouchableOpacity>
                     )}
-                  </Card>
-                ))
+                  </View>
+                  {resolution.isManualOverride && (
+                    <View style={styles.noteRow}>
+                      <Ionicons name="swap-horizontal-outline" size={12} color={colors.accent} />
+                      <Text style={styles.noteText}>{HELPER.manualOverride}</Text>
+                    </View>
+                  )}
+                  {resolution.activeAssignment?.note && (
+                    <View style={styles.noteRow}>
+                      <Ionicons name="chatbubble-outline" size={12} color={colors.textMuted} />
+                      <Text style={styles.noteText}>{resolution.activeAssignment.note}</Text>
+                    </View>
+                  )}
+                </Card>
               )}
-            </View>
-          );
-        })}
-      </ScrollView>
+              </View>
+            );
+          })}
+        </ScrollView>
+      </ClientTabSwipeView>
     </Screen>
   );
 }

@@ -7,6 +7,9 @@ interface PremiumGateProps {
   used: number;
   limit: number;
   remaining: number;
+  isPremium?: boolean;
+  isTrialActive?: boolean;
+  entitlementLabel?: string;
   children: React.ReactNode;
 }
 
@@ -15,10 +18,10 @@ interface PremiumGateProps {
  * Shows an upgrade prompt when the free limit is reached.
  * When billing is added, this becomes the enforcement point.
  */
-export function PremiumGate({ used, limit, remaining, children }: PremiumGateProps) {
+export function PremiumGate({ used, limit, remaining, isPremium = false, isTrialActive = false, entitlementLabel, children }: PremiumGateProps) {
   const router = useRouter();
 
-  if (remaining > 0) {
+  if (isPremium || isTrialActive || remaining > 0) {
     return <>{children}</>;
   }
 
@@ -27,10 +30,11 @@ export function PremiumGate({ used, limit, remaining, children }: PremiumGatePro
       <View style={styles.iconCircle}>
         <Ionicons name="lock-closed" size={32} color={colors.accent} />
       </View>
-      <Text style={styles.title}>Free Generations Used</Text>
+      <Text style={styles.title}>AI Generation Locked</Text>
       <Text style={styles.subtitle}>
-        You&apos;ve used all {limit} free AI-generated plans. Upgrade to Pro for unlimited access.
+        You&apos;ve used all {limit} free AI-generated plans. Upgrade to Premium to keep generating plans.
       </Text>
+      {entitlementLabel ? <Text style={styles.statusText}>{entitlementLabel}</Text> : null}
       <View style={styles.usageRow}>
         <Text style={styles.usageText}>{used} / {limit} used</Text>
       </View>
@@ -80,6 +84,11 @@ const styles = StyleSheet.create({
   },
   usageText: {
     color: colors.textSecondary,
+    fontSize: fontSize.sm,
+    fontWeight: '600',
+  },
+  statusText: {
+    color: colors.accent,
     fontSize: fontSize.sm,
     fontWeight: '600',
   },

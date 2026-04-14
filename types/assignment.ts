@@ -6,6 +6,13 @@ export type AssignmentSource = 'trainer' | 'self' | 'ai';
 
 export type DayOfWeek = 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat' | 'Sun';
 
+export type DayRoutineResolutionReason =
+  | 'manual_override'
+  | 'coach_assigned'
+  | 'self_scheduled'
+  | 'ai_scheduled'
+  | 'empty';
+
 export interface Assignment {
   id: string;
   trainerId: string;
@@ -46,4 +53,13 @@ export interface TrainerClient {
   assignmentCount: number;
   adherencePercent: number;
   memberSince: string;
+}
+
+export interface ResolvedDayRoutine {
+  day: DayOfWeek;
+  activeRoutine: import('@/types/workout').WorkoutRoutine | null;
+  activeAssignment: Assignment | null;
+  reason: DayRoutineResolutionReason;
+  candidates: Assignment[];
+  isManualOverride: boolean;
 }

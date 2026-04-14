@@ -5,13 +5,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { Screen } from '@/components/ui/Screen';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
 import { PremiumGate } from '@/components/ui/PremiumGate';
 import { usePremiumGate } from '@/hooks/usePremiumGate';
 import { generatePlan } from '@/services/generation';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
 import type { Difficulty, MuscleGroup, Equipment } from '@/types/workout';
-import type { GenerationRequest, GenerationHorizon } from '@/types/generation';
+import type { AppGenerationError, GenerationRequest, GenerationHorizon } from '@/types/generation';
 import { GOAL_OPTIONS, HORIZON_OPTIONS, DURATION_OPTIONS } from '@/types/generation';
 
 const EQUIPMENT_OPTIONS: Equipment[] = [
@@ -43,7 +42,7 @@ export default function GenerateScreen() {
   const [equipment, setEquipment] = useState<Equipment[]>(['barbell', 'dumbbell', 'machine', 'cable']);
   const [focusAreas, setFocusAreas] = useState<MuscleGroup[]>([]);
   const [generating, setGenerating] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState<AppGenerationError | null>(null);
 
   const toggleChip = <T extends string>(list: T[], item: T, setter: (v: T[]) => void) => {
     setter(list.includes(item) ? list.filter((x) => x !== item) : [...list, item]);
@@ -54,7 +53,7 @@ export default function GenerateScreen() {
   const handleGenerate = async () => {
     if (!canSubmit) return;
     setGenerating(true);
-    setError('');
+    setError(null);
     try {
       const request: GenerationRequest = {
         goal,
@@ -73,15 +72,28 @@ export default function GenerateScreen() {
       });
       gate.refresh();
     } catch (e: any) {
-      if (e?.code === 'generation_limit_reached') {
+      const appError = e as AppGenerationError;
+      if (appError?.code === 'generation_limit_reached') {
         gate.refresh();
-      } else {
-        setError(e.message ?? 'Generation failed. Please try again.');
       }
+      setError(appError);
     } finally {
       setGenerating(false);
     }
   };
+
+  const effectiveEntitlementText = gate.isAdminOverride
+    ? 'Admin override'
+    : gate.isPremium
+      ? 'Premium active'
+    : gate.isTrialActive
+      ? 'Trial active'
+      : gate.isAtCap
+        ? 'Free plan · AI cap reached'
+        : 'Free plan';
+
+  const errorMessage = error?.message ?? null;
+  const showRetry = error?.retryable ?? false;
 
   return (
     <Screen>
@@ -99,12 +111,43 @@ export default function GenerateScreen() {
           <View style={styles.usageBadge}>
             <Ionicons name="sparkles" size={14} color={colors.accent} />
             <Text style={styles.usageText}>
-              {gate.remaining} of {gate.limit} free generations remaining
+              {gate.isAdminOverride
+                ? 'Admin override · unlimited AI generation'
+                : gate.isPremium
+                ? 'Premium active · unlimited AI generation'
+                : gate.isTrialActive
+                  ? 'Trial active · unlimited AI generation'
+                  : `${gate.remaining} of ${gate.limit} free generations remaining`}
             </Text>
           </View>
         )}
 
-        <PremiumGate used={gate.used} limit={gate.limit} remaining={gate.remaining}>
+        {!gate.loading && (
+          <View style={styles.statusStack}>
+            <View style={styles.statusBadge}>
+              <Text style={styles.statusBadgeText}>{effectiveEntitlementText}</Text>
+            </View>
+            {gate.isUsingDevOverride && gate.devScenarioLabel ? (
+              <View style={styles.devBadge}>
+                <Text style={styles.devBadgeText}>Dev override · {gate.devScenarioLabel}</Text>
+              </View>
+            ) : null}
+            {gate.mockGenerationEnabled ? (
+              <View style={styles.devBadge}>
+                <Text style={styles.devBadgeText}>Mock generation enabled</Text>
+              </View>
+            ) : null}
+          </View>
+        )}
+
+        <PremiumGate
+          used={gate.used}
+          limit={gate.limit}
+          remaining={gate.remaining}
+          isPremium={gate.isPremium}
+          isTrialActive={gate.isTrialActive}
+          entitlementLabel={gate.isAdminOverride ? 'Admin override' : gate.entitlementState === 'free' ? 'Free plan' : gate.entitlementState.replace('_', ' ')}
+        >
           {/* Goal */}
           <Text style={styles.sectionTitle}>What's your goal?</Text>
           <View style={styles.chipRow}>
@@ -217,12 +260,24 @@ export default function GenerateScreen() {
           </View>
 
           {/* Error */}
-          {error !== '' && (
+          {errorMessage && (
             <Card style={styles.errorCard}>
-              <Text style={styles.errorText}>{error}</Text>
-              <TouchableOpacity onPress={() => setError('')}>
-                <Text style={styles.retryText}>Dismiss</Text>
-              </TouchableOpacity>
+              <Text style={styles.errorText}>{errorMessage}</Text>
+              <View style={styles.errorActions}>
+                {error?.code === 'generation_limit_reached' ? (
+                  <TouchableOpacity onPress={() => router.push('/(shared)/subscription')}>
+                    <Text style={styles.retryText}>View Plans</Text>
+                  </TouchableOpacity>
+                ) : null}
+                {showRetry ? (
+                  <TouchableOpacity onPress={handleGenerate} disabled={generating}>
+                    <Text style={styles.retryText}>Retry</Text>
+                  </TouchableOpacity>
+                ) : null}
+                <TouchableOpacity onPress={() => setError(null)}>
+                  <Text style={styles.retryText}>Dismiss</Text>
+                </TouchableOpacity>
+              </View>
             </Card>
           )}
 
@@ -269,6 +324,34 @@ const styles = StyleSheet.create({
   },
   usageText: {
     color: colors.accent,
+    fontSize: fontSize.xs,
+    fontWeight: '600',
+  },
+  statusStack: {
+    gap: spacing.xs,
+    marginBottom: spacing.md,
+  },
+  statusBadge: {
+    alignSelf: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: borderRadius.full,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+  },
+  statusBadgeText: {
+    color: colors.textPrimary,
+    fontSize: fontSize.xs,
+    fontWeight: '700',
+  },
+  devBadge: {
+    alignSelf: 'center',
+    backgroundColor: colors.textMuted + '25',
+    borderRadius: borderRadius.full,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+  },
+  devBadgeText: {
+    color: colors.textSecondary,
     fontSize: fontSize.xs,
     fontWeight: '600',
   },
@@ -343,20 +426,23 @@ const styles = StyleSheet.create({
   },
   errorCard: {
     marginTop: spacing.lg,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    gap: spacing.md,
   },
   errorText: {
     color: colors.danger,
     fontSize: fontSize.sm,
-    flex: 1,
+    lineHeight: 20,
+  },
+  errorActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    flexWrap: 'wrap',
+    gap: spacing.md,
   },
   retryText: {
     color: colors.accent,
     fontSize: fontSize.sm,
     fontWeight: '600',
-    marginLeft: spacing.md,
   },
   generateBtn: {
     marginTop: spacing.xl,

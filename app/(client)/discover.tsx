@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, FlatList, Pressable, TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { ClientTabSwipeView } from '@/components/navigation/ClientTabSwipeView';
 import { Screen } from '@/components/ui/Screen';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
@@ -114,8 +115,9 @@ export default function Discover() {
 
   return (
     <Screen>
-      <View style={styles.container}>
-        <Text style={styles.heading}>Discover Trainers</Text>
+      <ClientTabSwipeView routeKey="discover">
+        <View style={styles.container}>
+          <Text style={styles.heading}>Discover Trainers</Text>
 
         <View style={styles.searchBar}>
           <Ionicons name="search" size={18} color={colors.textMuted} />
@@ -163,21 +165,22 @@ export default function Discover() {
           )}
         />
 
-        <FlatList
-          data={trainers}
-          keyExtractor={(item) => item.id}
-          renderItem={renderTrainer}
-          contentContainerStyle={styles.list}
-          ListEmptyComponent={
-            <View style={styles.empty}>
-              <Ionicons name="people-outline" size={40} color={colors.textMuted} />
-              <Text style={styles.emptyText}>
-                {loading ? 'Searching…' : 'No trainers found'}
-              </Text>
-            </View>
-          }
-        />
-      </View>
+          <FlatList
+            data={trainers}
+            keyExtractor={(item) => item.id}
+            renderItem={renderTrainer}
+            contentContainerStyle={styles.list}
+            ListEmptyComponent={
+              <View style={styles.empty}>
+                <Ionicons name="people-outline" size={40} color={colors.textMuted} />
+                <Text style={styles.emptyText}>
+                  {loading ? 'Searching…' : 'No trainers found'}
+                </Text>
+              </View>
+            }
+          />
+        </View>
+      </ClientTabSwipeView>
     </Screen>
   );
 }

@@ -193,7 +193,13 @@ export default function ClientDetail() {
         )}
 
         {activeAssignments.map((a) => (
-          <Card key={a.id} style={styles.assignmentCard}>
+          <Card
+            key={a.id}
+            style={[
+              styles.assignmentCard,
+              { borderLeftWidth: 3, borderLeftColor: statusColor[a.status] ?? colors.border },
+            ]}
+          >
             <View style={styles.assignmentHeader}>
               <View style={styles.assignmentInfo}>
                 <Text style={styles.assignmentName}>{a.routineName}</Text>
@@ -203,13 +209,15 @@ export default function ClientDetail() {
               </View>
               <Badge label={statusLabel[a.status]} color={statusColor[a.status]} />
             </View>
-            <View style={styles.daysRow}>
-              {a.scheduleDays.map((day) => (
-                <View key={day} style={styles.dayChip}>
-                  <Text style={styles.dayChipText}>{day}</Text>
-                </View>
-              ))}
-            </View>
+            {a.scheduleDays.length > 0 && (
+              <View style={styles.daysRow}>
+                {a.scheduleDays.map((day) => (
+                  <View key={day} style={styles.dayChip}>
+                    <Text style={styles.dayChipText}>{day.slice(0, 3)}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
             {a.note && (
               <View style={styles.noteRow}>
                 <Ionicons name="chatbubble-ellipses-outline" size={14} color={colors.textMuted} />
@@ -226,14 +234,13 @@ export default function ClientDetail() {
               Completed ({completedAssignments.length})
             </Text>
             {completedAssignments.map((a) => (
-              <Card key={a.id} style={[styles.assignmentCard, styles.completedCard]}>
-                <View style={styles.assignmentHeader}>
-                  <View style={styles.assignmentInfo}>
-                    <Text style={styles.assignmentName}>{a.routineName}</Text>
-                  </View>
-                  <Badge label="Completed" color={colors.accent} />
-                </View>
-              </Card>
+              <View key={a.id} style={styles.completedRow}>
+                <Ionicons name="checkmark-circle" size={16} color={colors.accent} />
+                <Text style={styles.completedName} numberOfLines={1}>{a.routineName}</Text>
+                {a.programName ? (
+                  <Text style={styles.completedProgram} numberOfLines={1}>{a.programName}</Text>
+                ) : null}
+              </View>
             ))}
           </>
         )}
@@ -348,8 +355,24 @@ const styles = StyleSheet.create({
   assignmentCard: {
     marginBottom: spacing.md,
   },
-  completedCard: {
-    opacity: 0.7,
+  completedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
+  },
+  completedName: {
+    color: colors.textSecondary,
+    fontSize: fontSize.sm,
+    fontWeight: '600',
+    flex: 1,
+  },
+  completedProgram: {
+    color: colors.textMuted,
+    fontSize: fontSize.xs,
+    maxWidth: 100,
   },
   assignmentHeader: {
     flexDirection: 'row',

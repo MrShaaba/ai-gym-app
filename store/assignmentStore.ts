@@ -1,7 +1,15 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { Assignment, AssignmentSource, ClientNotification, DayOfWeek } from '@/types/assignment';
+import type {
+  Assignment,
+  AssignmentSource,
+  ClientNotification,
+  DayOfWeek,
+  ResolvedDayRoutine,
+} from '@/types/assignment';
+import { resolveDayRoutine as resolveDayRoutineForDay } from '@/services/schedule';
+import type { WorkoutRoutine } from '@/types/workout';
 import {
   fetchAssignments,
   insertAssignment,
@@ -12,6 +20,7 @@ import {
 interface AssignmentState {
   assignments: Assignment[];
   notifications: ClientNotification[];
+  daySelections: Partial<Record<DayOfWeek, WorkoutRoutine>>;
   /** True while the initial DB fetch is running. */
   hydrating: boolean;
 
@@ -39,6 +48,12 @@ interface AssignmentState {
   getUnreadCount: () => number;
   markNotificationRead: (id: string) => void;
   markAllNotificationsRead: () => void;
+  setDayOverride: (day: DayOfWeek, routine: WorkoutRoutine) => void;
+  clearDayOverride: (day: DayOfWeek) => void;
+  resolveDayRoutine: (clientId: string | undefined, day: DayOfWeek) => ResolvedDayRoutine;
+  removeRoutineReferences: (clientId: string, routineId: string) => void;
+  syncRoutineOverrideSnapshot: (routine: WorkoutRoutine) => void;
+  setDayRoutineSelection: (day: DayOfWeek, routine: WorkoutRoutine | null) => void;
 
   /** Self-assign a routine to the client's schedule. */
   selfAssign: (params: {
@@ -57,9 +72,10 @@ export const useAssignmentStore = create<AssignmentState>()(
     (set, get) => ({
       assignments: [],
       notifications: [],
+      daySelections: {},
       hydrating: false,
 
-      reset: () => set({ assignments: [], notifications: [], hydrating: false }),
+      reset: () => set({ assignments: [], notifications: [], daySelections: {}, hydrating: false }),
 
       hydrate: async (role, userId) => {
         set({ hydrating: true });
@@ -142,6 +158,54 @@ export const useAssignmentStore = create<AssignmentState>()(
           notifications: s.notifications.map((n) => ({ ...n, read: true })),
         })),
 
+      setDayOverride: (day, routine) =>
+        set((s) => ({
+          daySelections: {
+            ...s.daySelections,
+            [day]: routine,
+          },
+        })),
+
+      clearDayOverride: (day) =>
+        set((s) => {
+          const nextSelections = { ...s.daySelections };
+          delete nextSelections[day];
+          return { daySelections: nextSelections };
+        }),
+
+      resolveDayRoutine: (clientId, day) =>
+        resolveDayRoutineForDay({
+          clientId,
+          day,
+          assignments: get().assignments,
+          dayOverrides: get().daySelections,
+        }),
+
+      removeRoutineReferences: (clientId, routineId) =>
+        set((s) => ({
+          assignments: s.assignments.filter(
+            (assignment) => !(assignment.clientId === clientId && assignment.trainerId === clientId && assignment.routineId === routineId),
+          ),
+          daySelections: Object.fromEntries(
+            Object.entries(s.daySelections).filter(([, routine]) => routine?.id !== routineId),
+          ) as Partial<Record<DayOfWeek, WorkoutRoutine>>,
+        })),
+
+      syncRoutineOverrideSnapshot: (routine) =>
+        set((s) => ({
+          daySelections: Object.fromEntries(
+            Object.entries(s.daySelections).map(([day, currentRoutine]) => [
+              day,
+              currentRoutine?.id === routine.id ? routine : currentRoutine,
+            ]),
+          ) as Partial<Record<DayOfWeek, WorkoutRoutine>>,
+        })),
+
+      setDayRoutineSelection: (day, routine) =>
+        routine
+          ? get().setDayOverride(day, routine)
+          : get().clearDayOverride(day),
+
       selfAssign: async (params) => {
         const newAssignment = await insertSelfAssignment({
           clientId: params.clientId,
@@ -166,6 +230,7 @@ export const useAssignmentStore = create<AssignmentState>()(
       partialize: (state) => ({
         assignments: state.assignments,
         notifications: state.notifications,
+        daySelections: state.daySelections,
       }),
     },
   ),

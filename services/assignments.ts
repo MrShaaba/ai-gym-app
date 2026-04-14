@@ -126,3 +126,38 @@ export async function updateAssignmentStatusDB(
     .eq('id', id);
   if (error) throw error;
 }
+
+export async function deleteSelfAssignmentsForRoutine(
+  clientId: string,
+  routineId: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from('assignments')
+    .delete()
+    .eq('client_id', clientId)
+    .eq('trainer_id', clientId)
+    .eq('routine_id', routineId);
+
+  if (error) throw error;
+}
+
+export async function syncSelfAssignmentsForRoutine(params: {
+  clientId: string;
+  routineId: string;
+  routineName: string;
+  programName?: string;
+  exercisesJson?: unknown;
+}): Promise<void> {
+  const { error } = await supabase
+    .from('assignments')
+    .update({
+      routine_name: params.routineName,
+      program_name: params.programName ?? null,
+      exercises_json: params.exercisesJson ?? null,
+    })
+    .eq('client_id', params.clientId)
+    .eq('trainer_id', params.clientId)
+    .eq('routine_id', params.routineId);
+
+  if (error) throw error;
+}

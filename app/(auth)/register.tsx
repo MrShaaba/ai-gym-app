@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { useAuthStore } from '@/store/authStore';
 import { signUp } from '@/services/auth';
-import { getProfile } from '@/services/profiles';
 import { setUsername, checkUsernameAvailable } from '@/services/marketplace';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
 import { USERNAME_REGEX } from '@/config/constants';
@@ -23,6 +22,7 @@ const roles: { key: UserRole; label: string; desc: string; icon: IoniconsName }[
 export default function Register() {
   const router = useRouter();
   const setPendingRole = useAuthStore((s) => s.setPendingRole);
+  const setLoading = useAuthStore((s) => s.setLoading);
   const [selectedRole, setSelectedRole] = useState<UserRole>('client');
   const [fullName, setFullName] = useState('');
   const [username, setUsernameVal] = useState('');
@@ -54,17 +54,11 @@ export default function Register() {
       });
       setPendingRole(selectedRole);
 
-      // Eagerly set session so user object is available on trainer/client screens
-      if (data.session) {
-        useAuthStore.getState().setSession(data.session);
-        // Set username if provided
-        if (trimmedUsername) {
-          await setUsername(data.session.user.id, trimmedUsername);
-        }
-        const profile = await getProfile(data.session.user.id);
-        if (profile) useAuthStore.getState().setProfile(profile);
+      if (data.session && trimmedUsername) {
+        await setUsername(data.session.user.id, trimmedUsername);
       }
 
+      setLoading(true);
       router.push('/(auth)/biometric-setup');
     } catch (e: any) {
       setError(e.message ?? 'Registration failed');

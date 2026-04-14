@@ -72,6 +72,7 @@ export default function ClientLayout() {
       />
       <Tabs.Screen name="trainer-profile" options={{ href: null, tabBarStyle: { display: 'none' } }} />
       <Tabs.Screen name="create-program" options={{ href: null, tabBarStyle: { display: 'none' } }} />
+      <Tabs.Screen name="create-routine" options={{ href: null, tabBarStyle: { display: 'none' } }} />
       <Tabs.Screen name="generate" options={{ href: null, tabBarStyle: { display: 'none' } }} />
       <Tabs.Screen name="review-plan" options={{ href: null, tabBarStyle: { display: 'none' } }} />
     </Tabs>

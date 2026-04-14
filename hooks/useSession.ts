@@ -1,27 +1,16 @@
 import { useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuthStore } from '@/store/authStore';
 import { useAssignmentStore } from '@/store/assignmentStore';
 import { useWorkoutStore } from '@/store/workoutStore';
+import { useEntitlementStore } from '@/store/entitlementStore';
 import { getSession, onAuthStateChange } from '@/services/auth';
 import { getProfile } from '@/services/profiles';
 
-/** Reset in-memory state then hydrate fresh from Supabase.
- *  AsyncStorage keys are already cleared by authStore.logout() on sign-out,
- *  so we only need to reset + fetch here.
- */
-async function resetAndHydrateStores(userId: string, role: 'client' | 'trainer') {
-  // 1. Wipe AsyncStorage keys (idempotent — may already be cleared by logout)
-  await AsyncStorage.multiRemove(['workout-storage', 'assignment-storage']);
-
-  // 2. Reset in-memory state
-  useAssignmentStore.getState().reset();
-  useWorkoutStore.getState().reset();
-
-  // 3. Hydrate fresh from Supabase (await both to ensure data lands before render)
+async function hydrateStoresForUser(userId: string, role: 'client' | 'trainer') {
   await Promise.all([
     useAssignmentStore.getState().hydrate(role, userId),
     useWorkoutStore.getState().hydrateHistory(userId),
+    useEntitlementStore.getState().hydrate(userId, role),
   ]);
 }
 
@@ -34,10 +23,29 @@ export function useSession() {
   const setSession = useAuthStore((s) => s.setSession);
   const setProfile = useAuthStore((s) => s.setProfile);
   const setLoading = useAuthStore((s) => s.setLoading);
-  const logout = useAuthStore((s) => s.logout);
+  const clearUserScope = useAuthStore((s) => s.clearUserScope);
 
   useEffect(() => {
     let mounted = true;
+
+    const hydrateAuthenticatedUser = async (session: NonNullable<Awaited<ReturnType<typeof getSession>>>) => {
+      setLoading(true);
+      setSession(session);
+
+      const profile = await getProfile(session.user.id);
+      if (!mounted) return;
+
+      if (!profile) {
+        await clearUserScope({ clearPersisted: true });
+        if (mounted) setLoading(false);
+        return;
+      }
+
+      setProfile(profile);
+      await hydrateStoresForUser(session.user.id, profile.role);
+
+      if (mounted) setLoading(false);
+    };
 
     // 1. Restore persisted session
     (async () => {
@@ -46,14 +54,11 @@ export function useSession() {
         if (!mounted) return;
 
         if (session?.user) {
-          setSession(session);
-          const profile = await getProfile(session.user.id);
-          if (!mounted) return;
-          if (profile) {
-            setProfile(profile);
-            await resetAndHydrateStores(session.user.id, profile.role);
-          }
+          await hydrateAuthenticatedUser(session);
+          return;
         }
+
+        await clearUserScope({ clearPersisted: false });
       } finally {
         if (mounted) setLoading(false);
       }
@@ -64,20 +69,15 @@ export function useSession() {
       if (!mounted) return;
 
       if (event === 'SIGNED_OUT') {
-        logout();
+        await clearUserScope({ clearPersisted: true });
+        if (mounted) setLoading(false);
         return;
       }
 
       if (!session) return;
 
-      setSession(session);
-
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        const profile = await getProfile(session.user.id);
-        if (mounted && profile) {
-          setProfile(profile);
-          await resetAndHydrateStores(session.user.id, profile.role);
-        }
+        await hydrateAuthenticatedUser(session);
       }
     });
 
@@ -85,5 +85,5 @@ export function useSession() {
       mounted = false;
       unsubscribe();
     };
-  }, [setSession, setProfile, setLoading, logout]);
+  }, [setSession, setProfile, setLoading, clearUserScope]);
 }

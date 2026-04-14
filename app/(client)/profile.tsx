@@ -1,6 +1,7 @@
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { ClientTabSwipeView } from '@/components/navigation/ClientTabSwipeView';
 import { Screen } from '@/components/ui/Screen';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -28,23 +29,24 @@ export default function Profile() {
     { label: 'Goal', value: profile?.goal ?? '—' },
   ];
 
-  const handleSignOut = () => {
-    logout();
+  const handleSignOut = async () => {
+    await logout();
     router.replace('/');
   };
 
   return (
     <Screen>
-      <ScrollView contentContainerStyle={styles.container}>
-        <View style={styles.avatarSection}>
-          <View style={styles.avatarCircle}>
-            <Text style={styles.avatarInitials}>{initials}</Text>
+      <ClientTabSwipeView routeKey="profile">
+        <ScrollView contentContainerStyle={styles.container}>
+          <View style={styles.avatarSection}>
+            <View style={styles.avatarCircle}>
+              <Text style={styles.avatarInitials}>{initials}</Text>
+            </View>
+            <Text style={styles.name}>{profile?.full_name ?? 'User'}</Text>
+            {profile?.username && (
+              <Text style={styles.username}>@{profile.username}</Text>
+            )}
           </View>
-          <Text style={styles.name}>{profile?.full_name ?? 'User'}</Text>
-          {profile?.username && (
-            <Text style={styles.username}>@{profile.username}</Text>
-          )}
-        </View>
 
         <Text style={styles.sectionTitle}>Activity</Text>
         <Card style={styles.card}>
@@ -56,12 +58,13 @@ export default function Profile() {
           ))}
         </Card>
 
-        <View style={styles.actions}>
-          <Button title="Settings" icon="settings-outline" variant="secondary" onPress={() => router.push('/(shared)/settings')} />
-          <Button title="Subscription" icon="card-outline" variant="secondary" onPress={() => router.push('/(shared)/subscription')} />
-          <Button title="Sign Out" icon="log-out-outline" variant="outline" onPress={handleSignOut} />
-        </View>
-      </ScrollView>
+          <View style={styles.actions}>
+            <Button title="Settings" icon="settings-outline" variant="secondary" onPress={() => router.push('/(shared)/settings')} />
+            <Button title="Subscription" icon="card-outline" variant="secondary" onPress={() => router.push('/(shared)/subscription')} />
+            <Button title="Sign Out" icon="log-out-outline" variant="outline" onPress={handleSignOut} />
+          </View>
+        </ScrollView>
+      </ClientTabSwipeView>
     </Screen>
   );
 }

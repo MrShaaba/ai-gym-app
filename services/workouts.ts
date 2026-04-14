@@ -3,6 +3,10 @@ import type { CompletedWorkout, ExerciseLog } from '@/types/workout';
 
 /* ── helpers ─────────────────────────────────────────────────── */
 
+function isUuidLike(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
 function mapRow(row: Record<string, unknown>): CompletedWorkout {
   return {
     id: row.id as string,
@@ -15,6 +19,7 @@ function mapRow(row: Record<string, unknown>): CompletedWorkout {
     totalVolume: row.total_volume as number,
     totalSets: row.total_sets as number,
     totalReps: row.total_reps as number,
+    reflection: (row.reflection_json as CompletedWorkout['reflection']) ?? undefined,
   };
 }
 
@@ -38,8 +43,8 @@ export async function fetchWorkoutHistory(
 export async function insertCompletedWorkout(
   userId: string,
   workout: CompletedWorkout,
-): Promise<void> {
-  const { error } = await supabase
+): Promise<string | null> {
+  const { data, error } = await supabase
     .from('completed_workouts')
     .insert({
       user_id: userId,
@@ -52,6 +57,42 @@ export async function insertCompletedWorkout(
       total_sets: workout.totalSets,
       total_reps: workout.totalReps,
       exercises_json: workout.exercises,
-    });
+    })
+    .select('id')
+    .single();
+  if (error) throw error;
+  return (data?.id as string | undefined) ?? null;
+}
+
+export async function updateCompletedWorkout(
+  userId: string,
+  workout: CompletedWorkout,
+): Promise<void> {
+  const payload = {
+    routine_name: workout.routineName,
+    started_at: new Date(workout.startedAt).toISOString(),
+    completed_at: new Date(workout.completedAt).toISOString(),
+    duration_seconds: workout.durationSeconds,
+    total_volume: workout.totalVolume,
+    total_sets: workout.totalSets,
+    total_reps: workout.totalReps,
+    exercises_json: workout.exercises,
+  };
+
+  let query = supabase
+    .from('completed_workouts')
+    .update(payload)
+    .eq('user_id', userId);
+
+  if (isUuidLike(workout.id)) {
+    query = query.eq('id', workout.id);
+  } else {
+    query = query
+      .eq('routine_name', workout.routineName)
+      .eq('started_at', new Date(workout.startedAt).toISOString())
+      .eq('completed_at', new Date(workout.completedAt).toISOString());
+  }
+
+  const { error } = await query;
   if (error) throw error;
 }

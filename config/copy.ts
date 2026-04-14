@@ -1,4 +1,4 @@
-import type { AssignmentSource } from '@/types/assignment';
+import type { AssignmentSource, DayRoutineResolutionReason } from '@/types/assignment';
 
 /* ── Plan labels ─────────────────────────────────────────────── */
 
@@ -35,6 +35,7 @@ export const BUTTONS = {
   continueWorkout: 'Continue Workout',
   exploreTrainers: 'Explore Trainers',
   generateWorkout: 'Generate Workout',
+  clearOverride: 'Clear override',
 } as const;
 
 /* ── Helper text ─────────────────────────────────────────────── */
@@ -44,6 +45,7 @@ export const HELPER = {
   aiSave: 'AI plans can be saved instantly or reviewed by a trainer later.',
   coachExplain: 'Coach Plans are assigned by your trainer and designed for accountability.',
   selfExplain: 'Self Plans are flexible routines you manage yourself.',
+  manualOverride: 'Manual override active for this day.',
 } as const;
 
 /* ── Empty states ────────────────────────────────────────────── */
@@ -63,4 +65,13 @@ export const CONFIRM = {
   planSaved: 'Plan saved successfully.',
   endorsementSent: 'Endorsement request sent.',
   trainerApproved: 'Your trainer-approved plan is ready.',
+  overrideCleared: 'Manual override cleared for this day.',
 } as const;
+
+export const DAY_ROUTINE_REASON_LABEL: Record<DayRoutineResolutionReason, string> = {
+  manual_override: 'Manual override',
+  coach_assigned: 'Coach assigned',
+  self_scheduled: 'Self scheduled',
+  ai_scheduled: 'AI scheduled',
+  empty: 'Empty day',
+};

@@ -1,6 +1,18 @@
 import { supabase } from '@/config/supabase';
-import type { Difficulty, WorkoutExercise, WorkoutRoutine } from '@/types/workout';
+import { FREE_CUSTOM_ROUTINE_LIMIT } from '@/config/featureGates';
+import {
+  getDevScenarioCustomRoutineCount,
+  isDevEntitlementScenarioActive,
+  useDevEntitlementStore,
+} from '@/store/devEntitlementStore';
+import type { Difficulty, WorkoutExercise, WorkoutPlanSource, WorkoutRoutine } from '@/types/workout';
 import type { GeneratedPlan, ProgramSource } from '@/types/generation';
+
+function toWorkoutPlanSource(source: ProgramSource | undefined, createdBy: string, clientId: string): WorkoutPlanSource {
+  const normalized = source ?? (createdBy === clientId ? 'client' : 'trainer');
+  if (normalized === 'client') return 'self';
+  return normalized;
+}
 
 function isMissingPhase7cProgramColumn(message: string | undefined) {
   const lower = (message ?? '').toLowerCase();
@@ -35,6 +47,18 @@ export interface RoutineRow {
   exercises_json: WorkoutExercise[];
   sort_order: number;
   created_at: string;
+  program_name?: string;
+  source?: WorkoutPlanSource;
+}
+
+export const CUSTOM_ROUTINE_CONTAINER_NAME = 'My Routines';
+export const CUSTOM_ROUTINE_CONTAINER_DESCRIPTION = 'Custom routines you created.';
+
+export function isCustomRoutineContainerProgram(
+  program: Pick<ProgramRow, 'name' | 'created_by'>,
+  userId: string,
+) {
+  return program.created_by === userId && program.name === CUSTOM_ROUTINE_CONTAINER_NAME;
 }
 
 /* ── Program queries ─────────────────────────────────────────── */
@@ -70,7 +94,7 @@ export async function fetchClientPrograms(clientId: string): Promise<ProgramRow[
 
   let trainerData: ProgramRow[] = [];
   if (links && links.length > 0) {
-    const trainerIds = links.map((l) => l.trainer_id as string);
+    const trainerIds = links.map((l: { trainer_id: string }) => l.trainer_id);
     const { data, error } = await supabase
       .from('programs')
       .select('*')
@@ -107,6 +131,62 @@ export async function createProgram(params: {
     .single();
   if (error) throw error;
   return data as ProgramRow;
+}
+
+export async function getOrCreateCustomRoutineContainerProgram(userId: string): Promise<ProgramRow> {
+  const existing = await getCustomRoutineContainerProgram(userId);
+  if (existing) return existing;
+
+  return createProgram({
+    name: CUSTOM_ROUTINE_CONTAINER_NAME,
+    description: CUSTOM_ROUTINE_CONTAINER_DESCRIPTION,
+    difficulty: 'intermediate',
+    daysPerWeek: 1,
+    createdBy: userId,
+  });
+}
+
+export async function getCustomRoutineContainerProgram(userId: string): Promise<ProgramRow | null> {
+  const { data, error } = await supabase
+    .from('programs')
+    .select('*')
+    .eq('created_by', userId)
+    .eq('name', CUSTOM_ROUTINE_CONTAINER_NAME)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data ? (data as ProgramRow) : null;
+}
+
+export async function getCustomRoutineCount(userId: string): Promise<number> {
+  if (__DEV__) {
+    const devState = useDevEntitlementStore.getState();
+    if (isDevEntitlementScenarioActive(devState.scenario)) {
+      return getDevScenarioCustomRoutineCount(devState.scenario, FREE_CUSTOM_ROUTINE_LIMIT);
+    }
+  }
+
+  const { data, error } = await supabase
+    .from('programs')
+    .select('id')
+    .eq('created_by', userId)
+    .eq('name', CUSTOM_ROUTINE_CONTAINER_NAME)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data?.id) return 0;
+
+  const { count, error: countError } = await supabase
+    .from('routines')
+    .select('id', { count: 'exact', head: true })
+    .eq('program_id', data.id);
+
+  if (countError) throw countError;
+  return count ?? 0;
 }
 
 /** Update a program. */
@@ -147,7 +227,7 @@ export async function fetchTrainerRoutines(trainerId: string): Promise<RoutineRo
   if (pErr) throw pErr;
   if (!programs || programs.length === 0) return [];
 
-  const programIds = programs.map((p) => p.id as string);
+  const programIds = programs.map((p: { id: string }) => p.id);
 
   const { data, error } = await supabase
     .from('routines')
@@ -217,13 +297,32 @@ export async function fetchClientRoutines(clientId: string): Promise<RoutineRow[
   if (programs.length === 0) return [];
 
   const programIds = programs.map((p) => p.id);
+  const programMetaById = new Map(
+    programs.map((program) => [
+      program.id,
+      {
+        programName: program.name,
+        source: toWorkoutPlanSource(program.source, program.created_by, clientId),
+      },
+    ]),
+  );
+
   const { data, error } = await supabase
     .from('routines')
     .select('*')
     .in('program_id', programIds)
     .order('sort_order', { ascending: true });
   if (error) throw error;
-  return (data ?? []) as RoutineRow[];
+
+  return ((data ?? []) as RoutineRow[]).map((row) => {
+    const programMeta = row.program_id ? programMetaById.get(row.program_id) : undefined;
+
+    return {
+      ...row,
+      program_name: programMeta?.programName,
+      source: programMeta?.source,
+    };
+  });
 }
 
 /** Convert RoutineRow to local WorkoutRoutine shape (for starting a workout). */
@@ -234,6 +333,8 @@ export function routineRowToWorkoutRoutine(row: RoutineRow): WorkoutRoutine {
     exercises: row.exercises_json ?? [],
     difficulty: row.difficulty,
     durationMinutes: row.duration_minutes,
+    programName: row.program_name,
+    source: row.source,
   };
 }
 

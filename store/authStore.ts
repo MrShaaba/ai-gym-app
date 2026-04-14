@@ -3,11 +3,15 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { Session, User } from '@supabase/supabase-js';
 import type { UserRole } from '@/types/user';
 import type { Profile } from '@/services/profiles';
+import { getBillingAdapter } from '@/services/entitlements';
 import { signOut } from '@/services/auth';
+import { CREATE_ROUTINE_DRAFT_KEY } from '@/services/routineDrafts';
 import { useWorkoutStore } from '@/store/workoutStore';
 import { useAssignmentStore } from '@/store/assignmentStore';
+import { useEntitlementStore } from '@/store/entitlementStore';
 
 const ONBOARDED_KEY = 'ai-gym:hasOnboarded';
+const USER_BOUND_STORAGE_KEYS = ['workout-storage', 'assignment-storage', CREATE_ROUTINE_DRAFT_KEY];
 
 interface AuthState {
   /** True while the session is being restored on cold start. */
@@ -25,7 +29,8 @@ interface AuthState {
   setLoading: (v: boolean) => void;
   setSession: (session: Session) => void;
   setProfile: (profile: Profile) => void;
-  logout: () => void;
+  clearUserScope: (options?: { clearPersisted?: boolean }) => Promise<void>;
+  logout: () => Promise<void>;
   setPendingRole: (role: UserRole) => void;
   completeOnboarding: () => void;
 }
@@ -51,14 +56,15 @@ export const useAuthStore = create<AuthState>((set) => ({
   setProfile: (profile) =>
     set({ profile, role: profile.role }),
 
-  logout: () => {
-    // 1. Clear persisted store data from disk FIRST to prevent stale rehydration
-    AsyncStorage.multiRemove(['workout-storage', 'assignment-storage']).catch(() => {});
-    // 2. Clear in-memory state
+  clearUserScope: async ({ clearPersisted = false } = {}) => {
+    if (clearPersisted) {
+      await AsyncStorage.multiRemove(USER_BOUND_STORAGE_KEYS).catch(() => {});
+    }
+
     useWorkoutStore.getState().reset();
     useAssignmentStore.getState().reset();
-    // 3. Fire-and-forget Supabase sign-out
-    signOut().catch(() => {});
+    useEntitlementStore.getState().reset();
+
     set({
       isAuthenticated: false,
       role: null,
@@ -66,6 +72,12 @@ export const useAuthStore = create<AuthState>((set) => ({
       user: null,
       profile: null,
     });
+  },
+
+  logout: async () => {
+    await useAuthStore.getState().clearUserScope({ clearPersisted: true });
+    await getBillingAdapter().logOut().catch(() => {});
+    await signOut().catch(() => {});
   },
 
   setPendingRole: (role) => set({ pendingRole: role }),

@@ -112,18 +112,21 @@ Deno.serve(async (req) => {
     // Premium gate: check generation count
     const { data: profile } = await supabase
       .from('profiles')
-      .select('ai_generation_count')
+      .select('ai_generation_count, plan_tier, trial_ends_at, admin_override')
       .eq('id', user.id)
       .single();
 
     const FREE_LIMIT = 3;
     const count = profile?.ai_generation_count ?? 0;
-    // TODO: When billing is added, check subscription status here
-    if (count >= FREE_LIMIT) {
+    const hasPremiumAccess = Boolean(profile?.admin_override)
+      || profile?.plan_tier === 'premium'
+      || (typeof profile?.trial_ends_at === 'string' && new Date(profile.trial_ends_at).getTime() > Date.now());
+
+    if (!hasPremiumAccess && count >= FREE_LIMIT) {
       return new Response(
         JSON.stringify({
           error: 'generation_limit_reached',
-          message: 'You have used all free AI generations. Upgrade to Pro for unlimited access.',
+          message: 'You have used all free AI generations. Upgrade to Premium for unlimited access.',
           used: count,
           limit: FREE_LIMIT,
         }),

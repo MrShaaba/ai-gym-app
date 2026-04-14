@@ -6,12 +6,99 @@ import { Screen } from '@/components/ui/Screen';
 import { Button } from '@/components/ui/Button';
 import { ProgressBar } from '@/components/workout/ProgressBar';
 import { ExerciseCard } from '@/components/workout/ExerciseCard';
+import { ExerciseGroupCard } from '@/components/workout/ExerciseGroupCard';
 import { RestTimer } from '@/components/workout/RestTimer';
+import { ReflectionSheet } from '@/components/workout/ReflectionSheet';
 import { useWorkoutStore } from '@/store/workoutStore';
 import { useAuthStore } from '@/store/authStore';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
+import type { ExerciseLog, WorkoutExerciseGroupType, WorkoutReflection } from '@/types/workout';
 
 const REST_SECONDS = 90;
+
+type WorkoutBlock =
+  | {
+      key: string;
+      type: 'single';
+      flatIndices: [number];
+      exercise: ExerciseLog;
+    }
+  | {
+      key: string;
+      type: 'group';
+      groupId: string;
+      groupType: Exclude<WorkoutExerciseGroupType, 'single'>;
+      flatIndices: number[];
+      exercises: ExerciseLog[];
+    };
+
+function buildWorkoutBlocks(exercises: ExerciseLog[]): WorkoutBlock[] {
+  const blocks: WorkoutBlock[] = [];
+  const seenGroups = new Set<string>();
+
+  exercises.forEach((exercise, index) => {
+    if (exercise.groupId && exercise.groupType && exercise.groupType !== 'single') {
+      if (seenGroups.has(exercise.groupId)) return;
+
+      const grouped = exercises
+        .map((item, flatIndex) => ({ item, flatIndex }))
+        .filter(({ item }) => item.groupId === exercise.groupId)
+        .sort((left, right) => (left.item.groupOrder ?? 0) - (right.item.groupOrder ?? 0));
+
+      seenGroups.add(exercise.groupId);
+
+      blocks.push({
+        key: `group-${exercise.groupId}`,
+        type: 'group',
+        groupId: exercise.groupId,
+        groupType: exercise.groupType,
+        flatIndices: grouped.map(({ flatIndex }) => flatIndex),
+        exercises: grouped.map(({ item }) => item),
+      });
+      return;
+    }
+
+    blocks.push({
+      key: `single-${exercise.exerciseId}-${index}`,
+      type: 'single',
+      flatIndices: [index],
+      exercise,
+    });
+  });
+
+  return blocks;
+}
+
+function isWorkoutBlockComplete(block: WorkoutBlock) {
+  if (block.type === 'single') {
+    return block.exercise.sets.every((set) => set.completed);
+  }
+
+  const roundCount = block.exercises[0]?.sets.length ?? 0;
+  for (let roundIndex = 0; roundIndex < roundCount; roundIndex += 1) {
+    if (!block.exercises.every((exercise) => exercise.sets[roundIndex]?.completed)) {
+      return false;
+    }
+  }
+
+  return roundCount > 0;
+}
+
+function getElapsedSeconds(session: NonNullable<ReturnType<typeof useWorkoutStore.getState>['activeSession']>) {
+  const baseSeconds = session.elapsedSeconds ?? 0;
+  if ((session.status ?? 'running') === 'paused') {
+    return baseSeconds;
+  }
+
+  const resumedAt = session.lastResumedAt ?? session.startedAt;
+  return baseSeconds + Math.max(0, Math.floor((Date.now() - resumedAt) / 1000));
+}
+
+function formatElapsed(seconds: number) {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
 
 export default function WorkoutSession() {
   const router = useRouter();
@@ -22,52 +109,83 @@ export default function WorkoutSession() {
   const updateSet = useWorkoutStore((s) => s.updateSet);
   const toggleSetComplete = useWorkoutStore((s) => s.toggleSetComplete);
   const addSet = useWorkoutStore((s) => s.addSet);
+  const addGroupRound = useWorkoutStore((s) => s.addGroupRound);
   const removeSet = useWorkoutStore((s) => s.removeSet);
   const startRestTimer = useWorkoutStore((s) => s.startRestTimer);
   const clearRestTimer = useWorkoutStore((s) => s.clearRestTimer);
   const finishWorkout = useWorkoutStore((s) => s.finishWorkout);
   const cancelWorkout = useWorkoutStore((s) => s.cancelWorkout);
+  const pauseWorkout = useWorkoutStore((s) => s.pauseWorkout);
+  const resumeWorkout = useWorkoutStore((s) => s.resumeWorkout);
+  const restartWorkout = useWorkoutStore((s) => s.restartWorkout);
 
   const [elapsedDisplay, setElapsedDisplay] = useState('0:00');
+  const [showReflection, setShowReflection] = useState(false);
 
   React.useEffect(() => {
     if (!session) return;
     const tick = () => {
-      const secs = Math.floor((Date.now() - session.startedAt) / 1000);
-      const m = Math.floor(secs / 60);
-      const s = secs % 60;
-      setElapsedDisplay(`${m}:${s.toString().padStart(2, '0')}`);
+      setElapsedDisplay(formatElapsed(getElapsedSeconds(session)));
     };
     tick();
+    if ((session.status ?? 'running') === 'paused') return;
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, [session?.startedAt]);
-
-  const completedExercises = useMemo(() => {
-    if (!session) return 0;
-    return session.exercises.filter((e) => e.sets.every((s) => s.completed)).length;
   }, [session]);
 
+  const workoutBlocks = useMemo(() => {
+    if (!session) return [] as WorkoutBlock[];
+    return buildWorkoutBlocks(session.exercises);
+  }, [session]);
+
+  const completedBlocks = useMemo(
+    () => workoutBlocks.filter((block) => isWorkoutBlockComplete(block)).length,
+    [workoutBlocks],
+  );
+
   const handleFinish = useCallback(() => {
-    const result = finishWorkout(userId);
+    setShowReflection(true);
+  }, []);
+
+  const handleReflection = useCallback((reflection?: WorkoutReflection) => {
+    const result = finishWorkout(userId, reflection);
+    setShowReflection(false);
     if (result) {
       router.replace('/(workout)/summary');
     }
-  }, [finishWorkout, userId, router]);
+  }, [finishWorkout, router, userId]);
+
+  const handleReflectionSkip = useCallback(() => {
+    handleReflection(undefined);
+  }, [handleReflection]);
 
   const handleCancel = useCallback(() => {
-    Alert.alert('Cancel Workout', 'Are you sure? Progress will be lost.', [
-      { text: 'Keep Going', style: 'cancel' },
-      {
-        text: 'Cancel',
-        style: 'destructive',
-        onPress: () => {
-          cancelWorkout();
-          router.back();
+    router.replace('/(client)/workout');
+  }, [router]);
+
+  const handlePause = useCallback(() => {
+    pauseWorkout();
+    router.replace('/(client)/workout');
+  }, [pauseWorkout, router]);
+
+  const handleResume = useCallback(() => {
+    resumeWorkout();
+  }, [resumeWorkout]);
+
+  const handleRestart = useCallback(() => {
+    Alert.alert(
+      'Restart Workout',
+      'Restarting will clear recorded sets and rounds for this workout session. This cannot be undone.',
+      [
+        { text: 'Keep Workout', style: 'cancel' },
+        {
+          text: 'Restart',
+          style: 'destructive',
+          onPress: () => restartWorkout(),
         },
-      },
-    ]);
-  }, [cancelWorkout, router]);
+      ],
+    );
+  }, [restartWorkout]);
 
   if (!session) {
     return (
@@ -79,11 +197,12 @@ export default function WorkoutSession() {
   }
 
   const currentIndex = session.currentExerciseIndex;
-  const total = session.exercises.length;
+  const total = workoutBlocks.length;
   const isLast = currentIndex === total - 1;
 
   return (
-    <Screen edges={['top', 'bottom']}>
+    <>
+      <Screen edges={['top', 'bottom']}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={handleCancel} style={styles.headerBtn}>
@@ -92,6 +211,7 @@ export default function WorkoutSession() {
         <View style={styles.headerCenter}>
           <Text style={styles.routineName} numberOfLines={1}>{session.routineName}</Text>
           <Text style={styles.elapsed}>{elapsedDisplay}</Text>
+          {session.status === 'paused' ? <Text style={styles.statusLabel}>Paused</Text> : null}
         </View>
         <TouchableOpacity onPress={handleFinish} style={styles.headerBtn}>
           <Text style={styles.finishLabel}>Finish</Text>
@@ -100,10 +220,25 @@ export default function WorkoutSession() {
 
       {/* Progress */}
       <View style={styles.progressSection}>
-        <ProgressBar current={completedExercises} total={total} />
+        <ProgressBar current={completedBlocks} total={total} />
         <Text style={styles.progressText}>
-          Exercise {currentIndex + 1} of {total}
+          Block {Math.min(currentIndex + 1, Math.max(total, 1))} of {total}
         </Text>
+      </View>
+
+      <View style={styles.lifecycleRow}>
+        <Button
+          title={session.status === 'paused' ? 'Resume Workout' : 'Pause Workout'}
+          variant="secondary"
+          onPress={session.status === 'paused' ? handleResume : handlePause}
+          style={styles.lifecycleBtn}
+        />
+        <Button
+          title="Restart"
+          variant="outline"
+          onPress={handleRestart}
+          style={styles.lifecycleBtn}
+        />
       </View>
 
       {/* Rest Timer */}
@@ -115,20 +250,41 @@ export default function WorkoutSession() {
 
       {/* Exercises */}
       <ScrollView contentContainerStyle={styles.body}>
-        {session.exercises.map((ex, i) => (
-          <ExerciseCard
-            key={ex.exerciseId}
-            exerciseLog={ex}
-            exerciseIndex={i}
-            isActive={i === currentIndex}
-            onPress={() => goToExercise(i)}
-            onUpdateSet={(si, data) => updateSet(i, si, data)}
-            onToggleSet={(si) => toggleSetComplete(i, si)}
-            onAddSet={() => addSet(i)}
-            onRemoveSet={(si) => removeSet(i, si)}
-            onRestTimer={() => startRestTimer(REST_SECONDS)}
-          />
-        ))}
+        {workoutBlocks.map((block, blockIndex) => {
+          if (block.type === 'group') {
+            return (
+              <ExerciseGroupCard
+                key={block.key}
+                groupType={block.groupType}
+                exercises={block.exercises.map((exercise, index) => ({
+                  exerciseLog: exercise,
+                  flatIndex: block.flatIndices[index],
+                }))}
+                isActive={blockIndex === currentIndex}
+                onPress={() => goToExercise(blockIndex)}
+                onUpdateSet={(flatExerciseIndex, setIndex, data) => updateSet(flatExerciseIndex, setIndex, data)}
+                onToggleSet={(flatExerciseIndex, setIndex) => toggleSetComplete(flatExerciseIndex, setIndex)}
+                onAddRound={() => addGroupRound(block.flatIndices)}
+                onRestTimer={() => startRestTimer(REST_SECONDS)}
+              />
+            );
+          }
+
+          return (
+            <ExerciseCard
+              key={block.key}
+              exerciseLog={block.exercise}
+              exerciseIndex={blockIndex}
+              isActive={blockIndex === currentIndex}
+              onPress={() => goToExercise(blockIndex)}
+              onUpdateSet={(setIndex, data) => updateSet(block.flatIndices[0], setIndex, data)}
+              onToggleSet={(setIndex) => toggleSetComplete(block.flatIndices[0], setIndex)}
+              onAddSet={() => addSet(block.flatIndices[0])}
+              onRemoveSet={(setIndex) => removeSet(block.flatIndices[0], setIndex)}
+              onRestTimer={() => startRestTimer(REST_SECONDS)}
+            />
+          );
+        })}
       </ScrollView>
 
       {/* Bottom nav */}
@@ -157,7 +313,13 @@ export default function WorkoutSession() {
           />
         )}
       </View>
-    </Screen>
+      </Screen>
+      <ReflectionSheet
+        visible={showReflection}
+        onSubmit={handleReflection}
+        onSkip={handleReflectionSkip}
+      />
+    </>
   );
 }
 
@@ -199,6 +361,14 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'],
     marginTop: 2,
   },
+  statusLabel: {
+    color: colors.warning,
+    fontSize: fontSize.xs,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginTop: spacing.xs,
+  },
   finishLabel: {
     color: colors.accent,
     fontSize: fontSize.md,
@@ -208,6 +378,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     gap: spacing.xs,
+  },
+  lifecycleRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.md,
+  },
+  lifecycleBtn: {
+    flex: 1,
   },
   progressText: {
     color: colors.textMuted,

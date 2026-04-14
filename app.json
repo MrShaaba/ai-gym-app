@@ -16,8 +16,10 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSFaceIDUsageDescription": "Use Face ID for quick login"
-      }
+        "NSFaceIDUsageDescription": "Use Face ID for quick login",
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "bundleIdentifier": "com.mrshaaba.aigymapp"
     },
     "android": {
       "adaptiveIcon": {
@@ -38,6 +40,12 @@
     ],
     "experiments": {
       "tsconfigPaths": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "ca954add-a770-4aef-acae-5ad2fcedc291"
+      }
     }
   }
 }

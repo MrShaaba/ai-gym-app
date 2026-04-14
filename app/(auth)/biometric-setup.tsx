@@ -13,15 +13,13 @@ import { colors, fontSize, spacing } from '@/config/theme';
 export default function BiometricSetup() {
   const router = useRouter();
   const [supported, setSupported] = useState<boolean | null>(null);
+  const setLoading = useAuthStore((s) => s.setLoading);
 
   useEffect(() => {
     LocalAuthentication.hasHardwareAsync().then(setSupported);
   }, []);
 
   const proceed = async () => {
-    const { pendingRole } = useAuthStore.getState();
-    const role = pendingRole ?? 'client';
-
     // Ensure we have a real Supabase session with a user object.
     // signUp auto-confirms so a session should exist; recover it if the store is stale.
     let user = useAuthStore.getState().user;
@@ -40,7 +38,8 @@ export default function BiometricSetup() {
       return;
     }
 
-    router.replace(role === 'trainer' ? '/(trainer)/dashboard' : '/(client)/workout');
+    setLoading(true);
+    router.replace('/');
   };
 
   const handleEnable = async () => {

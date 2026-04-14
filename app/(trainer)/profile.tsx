@@ -35,8 +35,8 @@ export default function TrainerProfile() {
     { label: 'Reviews', value: String(profile?.rating_count ?? 0) },
   ];
 
-  const handleSignOut = () => {
-    logout();
+  const handleSignOut = async () => {
+    await logout();
     router.replace('/');
   };
 

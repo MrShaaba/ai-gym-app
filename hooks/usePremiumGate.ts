@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useUserId } from '@/hooks/useUserId';
 import { getGenerationCount } from '@/services/generation';
-import { FREE_AI_GENERATION_LIMIT } from '@/config/constants';
+import { FEATURE_GATES } from '@/config/featureGates';
+import { useEntitlement } from '@/hooks/useEntitlement';
+import { useFeatureGate } from '@/hooks/useFeatureGate';
 
 /**
  * Reusable premium gate hook.
@@ -10,11 +12,28 @@ import { FREE_AI_GENERATION_LIMIT } from '@/config/constants';
  */
 export function usePremiumGate() {
   const userId = useUserId();
+  const {
+    isAdminOverride,
+    isPremium,
+    isTrialActive,
+    loading: entitlementLoading,
+    state,
+    isUsingDevOverride,
+    devScenario,
+    devScenarioLabel,
+    mockGenerationEnabled,
+  } = useEntitlement();
+  const gate = useFeatureGate('ai_generation');
   const [used, setUsed] = useState(0);
   const [loading, setLoading] = useState(true);
+  const limit = FEATURE_GATES.ai_generation.freeLimit ?? 0;
 
   const refresh = useCallback(async () => {
-    if (!userId) return;
+    if (!userId) {
+      setUsed(0);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     try {
       const count = await getGenerationCount(userId);
@@ -30,18 +49,29 @@ export function usePremiumGate() {
     refresh();
   }, [refresh]);
 
-  const remaining = Math.max(0, FREE_AI_GENERATION_LIMIT - used);
-  const canGenerate = remaining > 0;
-  // TODO: When billing is added, premium users bypass the limit
-  const isPremium = false;
+  const remaining = Math.max(0, limit - used);
+  const canGenerate = gate.allowed || remaining > 0;
+  const isAtCap = !isPremium && !isTrialActive && remaining === 0;
+
+  useEffect(() => {
+    refresh();
+  }, [refresh, devScenario]);
 
   return {
-    canGenerate: canGenerate || isPremium,
+    canGenerate,
+    isAdminOverride,
     isPremium,
+    isTrialActive,
+    entitlementState: state,
+    isUsingDevOverride,
+    devScenario,
+    devScenarioLabel,
+    mockGenerationEnabled,
     used,
     remaining,
-    limit: FREE_AI_GENERATION_LIMIT,
-    loading,
+    limit,
+    isAtCap,
+    loading: loading || entitlementLoading,
     refresh,
   };
 }

@@ -1,6 +1,8 @@
 import React from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { usePreferencesStore } from '@/store/preferencesStore';
+import { formatWeightValue, parseWeightInputToKg } from '@/services/units';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
 import type { SetLog } from '@/types/workout';
 
@@ -14,20 +16,22 @@ interface SetRowProps {
 }
 
 export function SetRow({ index, data, onUpdate, onToggleComplete, onRemove, canRemove }: SetRowProps) {
+  const weightUnit = usePreferencesStore((s) => s.weightUnit);
+
   return (
-    <View style={[styles.row, data.completed && styles.rowCompleted]}>
-      <Text style={styles.setNum}>{index + 1}</Text>
+    <View style={[styles.row, data.completed && styles.rowCompleted, data.isWarmup && styles.rowWarmup]}>
+      <Text style={styles.setNum}>{data.isWarmup ? 'WU' : index + 1}</Text>
 
       <View style={styles.field}>
         <TextInput
           style={styles.input}
-          value={String(data.weight)}
-          onChangeText={(v) => onUpdate({ weight: Number(v) || 0 })}
-          keyboardType="numeric"
+          value={data.weight > 0 ? formatWeightValue(data.weight, weightUnit) : ''}
+          onChangeText={(v) => onUpdate({ weight: parseWeightInputToKg(v, weightUnit) })}
+          keyboardType="decimal-pad"
           selectTextOnFocus
           placeholderTextColor={colors.textMuted}
         />
-        <Text style={styles.unit}>kg</Text>
+        <Text style={styles.unit}>{weightUnit}</Text>
       </View>
 
       <View style={styles.field}>
@@ -70,6 +74,9 @@ const styles = StyleSheet.create({
   },
   rowCompleted: {
     backgroundColor: colors.accent + '10',
+  },
+  rowWarmup: {
+    backgroundColor: colors.info + '12',
   },
   setNum: {
     color: colors.textMuted,

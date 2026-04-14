@@ -2,17 +2,20 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Pressable, Modal,
 import { useMemo, useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { ClientTabSwipeView } from '@/components/navigation/ClientTabSwipeView';
 import { Screen } from '@/components/ui/Screen';
 import { Card } from '@/components/ui/Card';
+import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { PlanBadge } from '@/components/ui/PlanBadge';
 import { useWorkoutStore } from '@/store/workoutStore';
 import { useAssignmentStore } from '@/store/assignmentStore';
 import { useUserId } from '@/hooks/useUserId';
 import { fetchClientRoutines, routineRowToWorkoutRoutine, type RoutineRow } from '@/services/programs';
-import { BUTTONS, EMPTY } from '@/config/copy';
+import { BUTTONS, CONFIRM, DAY_ROUTINE_REASON_LABEL, EMPTY, HELPER } from '@/config/copy';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
-import type { WorkoutRoutine } from '@/types/workout';
+import type { WorkoutPlanSource, WorkoutRoutine } from '@/types/workout';
+import type { DayOfWeek } from '@/types/assignment';
 
 const DAY_LABELS_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const;
 
@@ -28,22 +31,33 @@ function buildWeekDays() {
   }), todayIdx };
 }
 
+function getPlanBadgeSource(source: WorkoutPlanSource | undefined) {
+  if (source === 'trainer') return 'trainer' as const;
+  if (source === 'self') return 'self' as const;
+  return 'ai' as const;
+}
+
 export default function Workout() {
   const router = useRouter();
   const userId = useUserId();
   const startWorkout = useWorkoutStore((s) => s.startWorkout);
   const activeSession = useWorkoutStore((s) => s.activeSession);
+  const resumeWorkout = useWorkoutStore((s) => s.resumeWorkout);
   const notifications = useAssignmentStore((s) => s.notifications);
   const allAssignments = useAssignmentStore((s) => s.assignments);
+  const daySelections = useAssignmentStore((s) => s.daySelections);
   const markAllRead = useAssignmentStore((s) => s.markAllNotificationsRead);
+  const setDayOverride = useAssignmentStore((s) => s.setDayOverride);
+  const clearDayOverride = useAssignmentStore((s) => s.clearDayOverride);
+  const resolveDayRoutineForDay = useAssignmentStore((s) => s.resolveDayRoutine);
   const unreadCount = useMemo(() => notifications.filter((n) => !n.read).length, [notifications]);
 
   const { days: weekDays, todayIdx } = useMemo(() => buildWeekDays(), []);
   const [selectedDayIdx, setSelectedDayIdx] = useState(todayIdx);
   const selectedDayLabel = DAY_LABELS_SHORT[selectedDayIdx];
+  const selectedDay = selectedDayLabel as DayOfWeek;
 
   const [pickerVisible, setPickerVisible] = useState(false);
-  const [selectedRoutine, setSelectedRoutine] = useState<WorkoutRoutine | null>(null);
   const [libraryRoutines, setLibraryRoutines] = useState<RoutineRow[]>([]);
   const [loadingRoutines, setLoadingRoutines] = useState(false);
 
@@ -65,22 +79,14 @@ export default function Workout() {
     loadRoutines();
   }, [loadRoutines]);
 
-  // Derive routines for the selected day from assignments
-  const todayRoutines = useMemo((): (WorkoutRoutine & { source?: string })[] => {
-    const myAssignments = allAssignments.filter(
-      (a) => a.clientId === userId && a.status !== 'completed' && a.scheduleDays.includes(selectedDayLabel as any),
-    );
-    return myAssignments
-      .filter((a) => a.exercisesJson && a.exercisesJson.length > 0)
-      .map((a) => ({
-        id: a.id,
-        name: a.routineName,
-        exercises: a.exercisesJson!,
-        difficulty: 'intermediate' as const,
-        assignedBy: a.programName,
-        source: a.source,
-      }));
-  }, [allAssignments, userId, selectedDayLabel]);
+  const activeDayResolution = useMemo(
+    () => resolveDayRoutineForDay(userId, selectedDay),
+    [resolveDayRoutineForDay, userId, selectedDay, allAssignments, daySelections],
+  );
+  const activeDayRoutine = activeDayResolution.activeRoutine;
+  const activeDayOwnerName = activeDayResolution.activeAssignment?.programName
+    ?? activeDayRoutine?.assignedBy
+    ?? activeDayRoutine?.programName;
 
   const handlePlay = (routine: WorkoutRoutine) => {
     startWorkout(routine);
@@ -89,21 +95,29 @@ export default function Workout() {
 
   const handleSelectRoutine = (row: RoutineRow) => {
     const routine = routineRowToWorkoutRoutine(row);
-    setSelectedRoutine(routine);
+    setDayOverride(selectedDay, routine);
     setPickerVisible(false);
   };
 
+  const handleClearOverride = () => {
+    clearDayOverride(selectedDay);
+  };
+
   const handleResume = () => {
+    if (activeSession?.status === 'paused') {
+      resumeWorkout();
+    }
     router.push('/(workout)/session');
   };
 
   return (
     <Screen>
-      <ScrollView contentContainerStyle={styles.container}>
-        <Text style={styles.pageTitle}>Workout</Text>
-        <Text style={styles.dateSubtitle}>
-          {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-        </Text>
+      <ClientTabSwipeView routeKey="workout" enabled={!pickerVisible}>
+        <ScrollView contentContainerStyle={styles.container}>
+          <Text style={styles.pageTitle}>Workout</Text>
+          <Text style={styles.dateSubtitle}>
+            {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+          </Text>
 
         <View style={styles.calendarStrip}>
           {weekDays.map((day, idx) => {
@@ -135,19 +149,25 @@ export default function Workout() {
             <View style={styles.resumeLeft}>
               <Ionicons name="play-circle" size={24} color={colors.accent} />
               <View>
-                <Text style={styles.resumeTitle}>In Progress</Text>
+                <Text style={styles.resumeTitle}>{activeSession.status === 'paused' ? 'Paused' : 'In Progress'}</Text>
                 <Text style={styles.resumeRoutine}>{activeSession.routineName}</Text>
               </View>
             </View>
-            <Text style={styles.resumeAction}>{BUTTONS.continueWorkout} →</Text>
+            <Text style={styles.resumeAction}>{activeSession.status === 'paused' ? 'Resume Workout →' : `${BUTTONS.continueWorkout} →`}</Text>
           </TouchableOpacity>
         )}
 
         {/* Select a routine row */}
         <View style={styles.routinePickerRow}>
-          <TouchableOpacity style={styles.routineDropdown} onPress={() => setPickerVisible(true)}>
+          <TouchableOpacity
+            style={styles.routineDropdown}
+            onPress={() => {
+              loadRoutines();
+              setPickerVisible(true);
+            }}
+          >
             <Text style={styles.routineDropdownText}>
-              {selectedRoutine ? selectedRoutine.name : 'Select a routine'}
+              {activeDayRoutine ? activeDayRoutine.name : 'Select a routine'}
             </Text>
             <Ionicons name="chevron-down" size={18} color={colors.textSecondary} />
           </TouchableOpacity>
@@ -156,41 +176,52 @@ export default function Workout() {
           </TouchableOpacity>
         </View>
 
-        {/* Start selected routine */}
-        {selectedRoutine && (
+        <Text style={styles.sectionTitle}>
+          {selectedDayIdx === todayIdx ? "Today's Routine" : `${selectedDayLabel}'s Routine`}
+        </Text>
+
+        {activeDayRoutine ? (
           <Card style={styles.selectedRoutineCard}>
             <View style={styles.routineRow}>
               <View style={styles.routineInfo}>
-                <Text style={styles.routineName}>{selectedRoutine.name}</Text>
-                <Text style={styles.routineMeta}>
-                  {selectedRoutine.exercises.length} exercises  ·  {selectedRoutine.durationMinutes ?? '—'} min
+                <Text style={styles.routineName}>{activeDayRoutine.name}</Text>
+                <View style={styles.ownerBadgeRow}>
+                  {activeDayRoutine.source && (
+                    <PlanBadge source={getPlanBadgeSource(activeDayRoutine.source)} />
+                  )}
+                  <Badge label={DAY_ROUTINE_REASON_LABEL[activeDayResolution.reason]} color={colors.textSecondary} size="sm" />
+                </View>
+                <Text style={styles.routineMuscles}>
+                  {[...new Set(activeDayRoutine.exercises.flatMap((exercise) => exercise.exercise.muscleGroups))].slice(0, 3).join(', ')}
                 </Text>
+                <Text style={styles.routineMeta}>
+                  {activeDayRoutine.exercises.length} exercises  ·  {activeDayRoutine.durationMinutes ?? '—'} min
+                </Text>
+                {activeDayOwnerName && (
+                  <View style={styles.trainerBadge}>
+                    <Ionicons name="person-circle-outline" size={12} color={colors.accent} />
+                    <Text style={styles.trainerText}>{activeDayOwnerName}</Text>
+                  </View>
+                )}
+                {activeDayResolution.isManualOverride && (
+                  <View style={styles.overrideRow}>
+                    <Text style={styles.overrideText}>{HELPER.manualOverride}</Text>
+                    <TouchableOpacity onPress={handleClearOverride}>
+                      <Text style={styles.overrideClear}>{BUTTONS.clearOverride}</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
               </View>
               <TouchableOpacity
                 style={styles.playBtn}
-                onPress={() => handlePlay(selectedRoutine)}
+                onPress={() => handlePlay(activeDayRoutine)}
                 disabled={!!activeSession}
               >
                 <Ionicons name="play" size={20} color={colors.background} />
               </TouchableOpacity>
             </View>
           </Card>
-        )}
-
-        {!selectedRoutine && !activeSession && (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyTitle}>Hey there!</Text>
-            <Text style={styles.emptySubtitle}>
-              You've worked out <Text style={{ fontWeight: '700' }}>0 times</Text> so far this week. Time to get started!
-            </Text>
-          </View>
-        )}
-
-        <Text style={styles.sectionTitle}>
-          {selectedDayIdx === todayIdx ? "Today's Routines" : `${selectedDayLabel}'s Routines`}
-        </Text>
-
-        {todayRoutines.length === 0 && (
+        ) : (
           <Card style={{ marginBottom: spacing.md }}>
             <Text style={{ color: colors.textMuted, textAlign: 'center', paddingVertical: spacing.md }}>
               {EMPTY.noWorkoutsToday}
@@ -198,48 +229,17 @@ export default function Workout() {
           </Card>
         )}
 
-        {todayRoutines.map((routine) => (
-          <Card key={routine.id} accent style={styles.routineCard}>
-            <View style={styles.routineRow}>
-              <View style={styles.routineInfo}>
-                <Text style={styles.routineName}>{routine.name}</Text>
-                {routine.source && (
-                  <PlanBadge source={routine.source as any} />
-                )}
-                <Text style={styles.routineMuscles}>
-                  {[...new Set(routine.exercises.flatMap((e) => e.exercise.muscleGroups))].slice(0, 3).join(', ')}
-                </Text>
-                <Text style={styles.routineMeta}>
-                  {routine.exercises.length} exercises  ·  {routine.durationMinutes ?? '—'} min
-                </Text>
-                {routine.assignedBy && (
-                  <View style={styles.trainerBadge}>
-                    <Ionicons name="person-circle-outline" size={12} color={colors.accent} />
-                    <Text style={styles.trainerText}>{routine.assignedBy}</Text>
-                  </View>
-                )}
-              </View>
-              <TouchableOpacity
-                style={styles.playBtn}
-                onPress={() => handlePlay(routine)}
-                disabled={!!activeSession}
-              >
-                <Ionicons name="play" size={20} color={colors.background} />
-              </TouchableOpacity>
-            </View>
-          </Card>
-        ))}
-
-        <Text style={styles.sectionTitle}>Quick Actions</Text>
-        <View style={styles.quickActions}>
-          <Button
-            title={BUTTONS.generateWorkout}
-            icon="sparkles-outline"
-            onPress={() => router.push('/(client)/generate')}
-            style={styles.actionBtn}
-          />
-        </View>
-      </ScrollView>
+          <Text style={styles.sectionTitle}>Quick Actions</Text>
+          <View style={styles.quickActions}>
+            <Button
+              title={BUTTONS.generateWorkout}
+              icon="sparkles-outline"
+              onPress={() => router.push('/(client)/generate')}
+              style={styles.actionBtn}
+            />
+          </View>
+        </ScrollView>
+      </ClientTabSwipeView>
 
       {/* Bottom-sheet routine picker */}
       <Modal
@@ -270,10 +270,17 @@ export default function Workout() {
                   style={styles.modalItem}
                   onPress={() => handleSelectRoutine(item)}
                 >
-                  <Text style={styles.modalItemName}>{item.name}</Text>
-                  <Text style={styles.modalItemMeta}>
-                    {(item.exercises_json ?? []).length} EXERCISES
-                  </Text>
+                  <View style={styles.modalItemRow}>
+                    <View style={styles.modalItemInfo}>
+                      <Text style={styles.modalItemName}>{item.name}</Text>
+                      <Text style={styles.modalItemMeta}>
+                        {(item.exercises_json ?? []).length} EXERCISES
+                      </Text>
+                    </View>
+                    {activeDayRoutine?.id === item.id && (
+                      <Ionicons name="checkmark-circle" size={18} color={colors.accent} />
+                    )}
+                  </View>
                 </TouchableOpacity>
               )}
               showsVerticalScrollIndicator={false}
@@ -383,9 +390,6 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
     marginBottom: spacing.md,
   },
-  routineCard: {
-    marginBottom: spacing.md,
-  },
   routineRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -413,6 +417,12 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     marginTop: spacing.xs,
   },
+  ownerBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.xs,
+  },
   playBtn: {
     width: 44,
     height: 44,
@@ -431,6 +441,23 @@ const styles = StyleSheet.create({
     color: colors.accent,
     fontSize: 11,
     fontWeight: '500',
+  },
+  overrideRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.md,
+    marginTop: spacing.sm,
+  },
+  overrideText: {
+    color: colors.textMuted,
+    fontSize: fontSize.xs,
+    flex: 1,
+  },
+  overrideClear: {
+    color: colors.accent,
+    fontSize: fontSize.xs,
+    fontWeight: '600',
   },
   resumeBanner: {
     flexDirection: 'row',
@@ -502,23 +529,6 @@ const styles = StyleSheet.create({
   selectedRoutineCard: {
     marginBottom: spacing.lg,
   },
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: spacing.xl,
-    marginBottom: spacing.lg,
-  },
-  emptyTitle: {
-    color: colors.textPrimary,
-    fontSize: fontSize.xl,
-    fontWeight: '700',
-    marginBottom: spacing.sm,
-  },
-  emptySubtitle: {
-    color: colors.textMuted,
-    fontSize: fontSize.md,
-    textAlign: 'center',
-    lineHeight: 22,
-  },
   // Modal / bottom sheet
   modalOverlay: {
     flex: 1,
@@ -557,6 +567,15 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
+  },
+  modalItemRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  modalItemInfo: {
+    flex: 1,
   },
   modalItemName: {
     color: colors.textPrimary,

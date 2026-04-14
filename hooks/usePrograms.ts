@@ -20,6 +20,8 @@ export function usePrograms(
 
   const load = useCallback(async () => {
     if (!userId) {
+      setPrograms([]);
+      setError(null);
       setLoading(false);
       return;
     }

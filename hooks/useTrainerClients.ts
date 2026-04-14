@@ -13,6 +13,8 @@ export function useTrainerClients(trainerId: string | undefined) {
 
   const load = useCallback(async () => {
     if (!trainerId) {
+      setClients([]);
+      setError(null);
       setLoading(false);
       return;
     }

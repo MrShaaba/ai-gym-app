@@ -3,6 +3,10 @@ import { supabase } from '@/config/supabase';
 export interface Profile {
   id: string;
   role: 'client' | 'trainer';
+  plan_tier?: 'free' | 'premium';
+  trial_started_at?: string | null;
+  trial_ends_at?: string | null;
+  admin_override?: boolean;
   full_name: string;
   avatar_url: string | null;
   goal: string | null;

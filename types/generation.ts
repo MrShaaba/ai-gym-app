@@ -46,6 +46,19 @@ export interface GenerationError {
   limit?: number;
 }
 
+export type GenerationFailureCode =
+  | 'transport_failure'
+  | 'backend_unavailable'
+  | 'generation_limit_reached'
+  | 'generation_failed';
+
+export interface AppGenerationError extends Error {
+  code: GenerationFailureCode;
+  used?: number;
+  limit?: number;
+  retryable?: boolean;
+}
+
 /* ── Program Source ──────────────────────────────────────────── */
 
 export type ProgramSource = 'client' | 'trainer' | 'ai' | 'ai_endorsed';
