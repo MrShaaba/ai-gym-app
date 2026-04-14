@@ -79,17 +79,15 @@ export default function Settings() {
   const [toggles, setToggles] = useState<Record<string, boolean>>({
     notifications: true,
     darkMode: true,
-    metric: weightUnit === 'kg',
   });
 
   const handleToggle = useCallback((key: string) => {
     if (key === 'metric') {
       toggleWeightUnit();
-      setToggles((prev) => ({ ...prev, metric: weightUnit !== 'kg' }));
       return;
     }
     setToggles((prev) => ({ ...prev, [key]: !prev[key] }));
-  }, [toggleWeightUnit, weightUnit]);
+  }, [toggleWeightUnit]);
 
   const handleSignOut = async () => {
     await logout();
