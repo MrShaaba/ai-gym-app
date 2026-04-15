@@ -13,7 +13,7 @@ import { useWorkoutStore } from '@/store/workoutStore';
 import { useAssignmentStore } from '@/store/assignmentStore';
 import { useUserId } from '@/hooks/useUserId';
 import { fetchClientRoutines, routineRowToWorkoutRoutine, type RoutineRow } from '@/services/programs';
-import { BUTTONS, CONFIRM, DAY_ROUTINE_REASON_LABEL, EMPTY, HELPER } from '@/config/copy';
+import { BUTTONS, CLIENT_NOTIF, CONFIRM, DAY_ROUTINE_REASON_LABEL, EMPTY, HELPER } from '@/config/copy';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
 import type { WorkoutPlanSource, WorkoutRoutine } from '@/types/workout';
 import type { DayOfWeek } from '@/types/assignment';
@@ -47,11 +47,13 @@ export default function Workout() {
   const notifications = useAssignmentStore((s) => s.notifications);
   const allAssignments = useAssignmentStore((s) => s.assignments);
   const daySelections = useAssignmentStore((s) => s.daySelections);
-  const markAllRead = useAssignmentStore((s) => s.markAllNotificationsRead);
+  const markNotificationRead = useAssignmentStore((s) => s.markNotificationRead);
   const setDayOverride = useAssignmentStore((s) => s.setDayOverride);
   const clearDayOverride = useAssignmentStore((s) => s.clearDayOverride);
   const resolveDayRoutineForDay = useAssignmentStore((s) => s.resolveDayRoutine);
-  const unreadCount = useMemo(() => notifications.filter((n) => !n.read).length, [notifications]);
+  const unreadNotifs = useMemo(() => notifications.filter((n) => !n.read), [notifications]);
+  const unreadCount = unreadNotifs.length;
+  const latestNotif = unreadNotifs[0] ?? null;
 
   const { days: weekDays, todayIdx } = useMemo(() => buildWeekDays(), []);
   const [selectedDayIdx, setSelectedDayIdx] = useState(todayIdx);
@@ -133,16 +135,43 @@ export default function Workout() {
           })}
         </View>
 
-        {unreadCount > 0 && (
-          <TouchableOpacity style={styles.notifBanner} onPress={markAllRead}>
-            <View style={styles.notifLeft}>
-              <Ionicons name="notifications" size={18} color={colors.infoLight} />
-              <Text style={styles.notifText}>
-                {unreadCount} new notification{unreadCount !== 1 ? 's' : ''} from your trainer
-              </Text>
+        {latestNotif && (
+          <View style={styles.notifCard}>
+            <View style={styles.notifCardHeader}>
+              <View style={styles.notifIconCircle}>
+                <Ionicons name="barbell" size={16} color={colors.accent} />
+              </View>
+              <View style={styles.notifCardContent}>
+                <Text style={styles.notifCardTitle}>{latestNotif.title}</Text>
+                <Text style={styles.notifCardBody}>{latestNotif.body}</Text>
+              </View>
             </View>
-            <Text style={styles.notifDismiss}>Dismiss</Text>
-          </TouchableOpacity>
+            <View style={styles.notifCardActions}>
+              <TouchableOpacity
+                style={styles.notifViewBtn}
+                onPress={() => {
+                  markNotificationRead(latestNotif.id);
+                  // If the assigned routine is for today, stay on workout tab; otherwise go to schedule
+                  const linkedAssignment = latestNotif.assignmentId
+                    ? allAssignments.find((a) => a.id === latestNotif.assignmentId)
+                    : null;
+                  const todayLabel = DAY_LABELS_SHORT[todayIdx] as DayOfWeek;
+                  const isForToday = linkedAssignment?.scheduleDays.includes(todayLabel);
+                  if (!isForToday) {
+                    router.push('/(client)/schedule');
+                  }
+                }}
+              >
+                <Text style={styles.notifViewText}>{activeDayRoutine ? CLIENT_NOTIF.viewWorkout : CLIENT_NOTIF.viewSchedule}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => markNotificationRead(latestNotif.id)}>
+                <Text style={styles.notifDismissText}>{CLIENT_NOTIF.dismiss}</Text>
+              </TouchableOpacity>
+            </View>
+            {unreadCount > 1 && (
+              <Text style={styles.notifMore}>{CLIENT_NOTIF.moreNotifications(unreadCount - 1)}</Text>
+            )}
+          </View>
         )}
 
         {activeSession && (
@@ -357,32 +386,68 @@ const styles = StyleSheet.create({
   dayDotActive: {
     backgroundColor: colors.accent,
   },
-  notifBanner: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: colors.infoLight + '15',
-    borderColor: colors.infoLight + '40',
+  notifCard: {
+    backgroundColor: colors.accent + '10',
+    borderColor: colors.accent + '30',
     borderWidth: 1,
     borderRadius: borderRadius.lg,
     padding: spacing.md,
     marginBottom: spacing.lg,
-  },
-  notifLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
     gap: spacing.sm,
-    flex: 1,
   },
-  notifText: {
+  notifCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+  },
+  notifIconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.accent + '20',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  notifCardContent: {
+    flex: 1,
+    gap: 2,
+  },
+  notifCardTitle: {
     color: colors.textPrimary,
     fontSize: fontSize.sm,
-    flex: 1,
+    fontWeight: '700',
   },
-  notifDismiss: {
-    color: colors.infoLight,
+  notifCardBody: {
+    color: colors.textSecondary,
+    fontSize: fontSize.sm,
+    lineHeight: 18,
+  },
+  notifCardActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: spacing.xs,
+  },
+  notifViewBtn: {
+    backgroundColor: colors.accent,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.full,
+  },
+  notifViewText: {
+    color: colors.background,
+    fontSize: fontSize.xs,
+    fontWeight: '700',
+  },
+  notifDismissText: {
+    color: colors.textMuted,
     fontSize: fontSize.xs,
     fontWeight: '600',
+  },
+  notifMore: {
+    color: colors.textMuted,
+    fontSize: fontSize.xs,
+    textAlign: 'center',
   },
   routineRow: {
     flexDirection: 'row',

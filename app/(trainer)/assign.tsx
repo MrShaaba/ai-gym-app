@@ -11,6 +11,7 @@ import { fetchTrainerRoutines, type RoutineRow } from '@/services/programs';
 import { useAssignmentStore } from '@/store/assignmentStore';
 import { useAuthStore } from '@/store/authStore';
 import { useUserId } from '@/hooks/useUserId';
+import { TRAINER_LOOP } from '@/config/copy';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
 import type { DayOfWeek } from '@/types/assignment';
 
@@ -55,9 +56,18 @@ export default function Assign() {
       });
 
       Alert.alert(
-        'Workout Assigned',
-        `"${selectedRoutine?.name}" has been assigned to ${clientName} for ${selectedDays.join(', ')}.`,
-        [{ text: 'Done', onPress: () => router.back() }],
+        TRAINER_LOOP.assignedTitle,
+        TRAINER_LOOP.assignedBody(selectedRoutine.name, clientName ?? '', selectedDays.join(', ')),
+        [
+          {
+            text: TRAINER_LOOP.btnViewClient,
+            onPress: () => {
+              router.back();
+              setTimeout(() => router.push({ pathname: '/(trainer)/client-detail', params: { id: clientId } }), 100);
+            },
+          },
+          { text: TRAINER_LOOP.btnDone, style: 'cancel', onPress: () => router.back() },
+        ],
       );
     } catch (e) {
       Alert.alert('Error', 'Failed to assign workout. Please try again.');

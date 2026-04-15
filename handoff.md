@@ -1,8 +1,8 @@
-# Handoff — AI Gym App
+ Handoff — AI Gym App
 
 > **For:** Cline (implementation agent)
-> **From:** Copilot (VS Code agent, Claude Opus 4.6)
-> **Date:** 2025-07-15
+> **From:** Audit pass (full codebase review)
+> **Date:** 2026-04-15
 > **Repo root:** `/Users/bellomohammed/Dev/experiments/ai-gym-app`
 
 ---
@@ -11,11 +11,11 @@
 
 AI Gym is a React Native (Expo SDK 54) fitness app targeting two user roles: **clients** (gym-goers) and **trainers** (coaches managing multiple clients). It combines AI-generated workout programming with real trainer oversight. The app is part of a broader "app factory" strategy — the owner builds portfolio-quality products to demonstrate full-stack, AI-integrated mobile engineering.
 
-**Current state:** The app shell is feature-complete through Phase 7C. Auth (Supabase email/password), role-based routing, workout logging, trainer-client linking, program management, assignment flow, marketplace discovery, real-time subscriptions, and AI plan generation UI are all coded. TypeScript compiles with **zero errors**.
+**Current state:** The app is feature-complete through Phase 8 (Bug Fixes & Polish) plus additional hardening passes (App Simplification, Visual Language, Trainer Workflow Maturity, Trainer Conversion Loop + Beta Hardening). Auth (Supabase email/password), role-based routing, workout logging with grouped sets (supersets/trisets/giantsets), trainer-client linking, program management, assignment flow with day-level scheduling, marketplace discovery, real-time subscriptions, AI plan generation UI, entitlement/billing architecture, and unit preferences (kg/lb) are all coded. TypeScript compiles with **zero errors**.
 
-**What's deployed:** Supabase project exists (`fcsllrdvsizlrrqatgeq`). Base schema (6 tables) is live. Phase 7C migration SQL and Edge Function are written but **NOT yet applied/deployed**.
+**What's deployed:** Supabase project exists (`fcsllrdvsizlrrqatgeq`). Base schema (6 tables) is live. Phase 7C migration SQL (283 lines, 5-part mega-migration) and Edge Function are written but **NOT yet applied/deployed**. Phase 10 entitlements migration is written but **NOT yet applied**.
 
-**Revenue model:** Freemium. 3 free AI generations, then subscription unlock (RevenueCat, Phase 4). Trainer marketplace with reviews, ratings, and profile discovery.
+**Revenue model:** Freemium. 3 free AI generations → 7-day trial → subscription unlock (RevenueCat adapter pattern, Phase 10). Trainer marketplace with reviews, ratings, and profile discovery.
 
 ---
 
@@ -27,11 +27,12 @@ AI Gym is a React Native (Expo SDK 54) fitness app targeting two user roles: **c
 | UI | React Native | 0.81.5 | No native modules |
 | Language | TypeScript | 5.9.2 | Strict mode, tsc clean |
 | Routing | expo-router | 6.0.23 | File-based, 5 route groups |
-| State | Zustand | 5.0.12 | 3 stores |
+| State | Zustand | 5.0.12 | **6 stores** (see §7) |
 | Backend | Supabase | JS v2.101.1 | Auth, Postgres, Edge Functions, Realtime |
 | AI | OpenAI gpt-4o-mini | — | Via Supabase Edge Function only |
-| Storage | AsyncStorage | 2.2.0 | Zustand persistence |
-| Secure Storage | expo-secure-store | ~15.0.8 | Not actively used post-Supabase migration |
+| Storage | AsyncStorage | 2.2.0 | Zustand persistence + routine drafts |
+| Secure Storage | expo-secure-store | ~15.0.8 | Legacy token wrapper only |
+| Billing | RevenueCat | — | Adapter pattern (mock + real) |
 | Package Manager | Yarn | 4.4.1 | PnP not enabled, classic node_modules |
 
 **No ESLint, Prettier, or test runner configured.**
@@ -44,449 +45,674 @@ npx tsc --noEmit        # Type check (currently 0 errors)
 yarn install            # Install dependencies
 ```
 
+### ⚠️ IDE False Positives
+
+VS Code may show `--jsx` or JSX-related red squiggles. These are **false positives** caused by the IDE TypeScript server. Always verify with `npx tsc --noEmit` before treating any error as real.
+
 ---
 
 ## 3. Project Structure
 
 ```
 ai-gym-app/
-├── app/                        # expo-router file-based screens
-│   ├── _layout.tsx             # Root Stack (providers, StatusBar)
-│   ├── index.tsx               # Entry redirect: loading → onboarding → auth → role
-│   ├── +not-found.tsx          # 404 fallback
-│   ├── (auth)/                 # Headerless Stack
-│   │   ├── onboarding.tsx      # Swipe intro → login
-│   │   ├── login.tsx           # Email/password + social placeholders
-│   │   ├── register.tsx        # Name, email, password, role picker
-│   │   ├── otp-verify.tsx      # STUB — 6-digit code
-│   │   └── biometric-setup.tsx # Face ID opt-in
-│   ├── (client)/               # Bottom Tabs (4 visible + 2 hidden)
-│   │   ├── workout.tsx         # Weekly calendar, assigned routines, "Generate" CTA
-│   │   ├── programs.tsx        # Program list, AI/endorsed badges, "AI Builder" button
-│   │   ├── statistics.tsx      # PLACEHOLDER — stat cards
-│   │   ├── profile.tsx         # Measurements, avatar, sign-out
-│   │   ├── generate.tsx        # HIDDEN TAB — AI generation form
-│   │   ├── review-plan.tsx     # HIDDEN TAB — review generated plan, save/regenerate
-│   │   ├── discover.tsx        # Marketplace trainer search
-│   │   ├── trainer-profile.tsx # View trainer detail, request link
-│   │   ├── create-program.tsx  # STUB — client program creation
-│   │   └── schedule.tsx        # STUB — schedule view
-│   ├── (trainer)/              # Bottom Tabs (4 tabs)
-│   │   ├── dashboard.tsx       # Stats grid, today-at-a-glance
-│   │   ├── clients.tsx         # Client list (active/pending/inactive)
-│   │   ├── programs.tsx        # Program CRUD, routine management
-│   │   ├── profile.tsx         # Trainer profile, sign-out
-│   │   ├── client-detail.tsx   # HIDDEN — view client, assignments, AI endorsement
-│   │   ├── assign.tsx          # HIDDEN — assign routine to client
-│   │   ├── create-routine.tsx  # HIDDEN — build routine with exercises
-│   │   ├── program-detail.tsx  # HIDDEN — view/edit program routines
-│   │   ├── edit-profile.tsx    # HIDDEN — edit trainer profile fields
-│   │   └── invite-client.tsx   # HIDDEN — invite via email
-│   ├── (workout)/              # Stack (push from client tabs)
-│   │   ├── session.tsx         # Live workout session, set logging, rest timer
-│   │   └── summary.tsx         # Post-workout summary, save to Supabase
-│   └── (shared)/               # Modal Stack
-│       ├── subscription.tsx    # Paywall placeholder
-│       └── settings.tsx        # Preferences, sign-out
+├── app/                            # expo-router file-based screens
+│   ├── _layout.tsx                 # Root Stack (StatusBar, no providers wrapping)
+│   ├── index.tsx                   # Entry redirect: loading→onboarding→auth→role
+│   ├── +not-found.tsx              # 404 fallback
+│   ├── (auth)/                     # Headerless Stack
+│   │   ├── onboarding.tsx          # Swipe intro → login
+│   │   ├── login.tsx               # Email/password + social placeholders
+│   │   ├── register.tsx            # Name, email, password, role picker
+│   │   ├── otp-verify.tsx          # OTP verification (placeholder)
+│   │   └── biometric-setup.tsx     # Biometric (placeholder)
+│   ├── (client)/                   # Client tab group
+│   │   ├── _layout.tsx             # ClientTabSwipeView layout
+│   │   ├── workout.tsx             # Today's workout, notification banner, Start
+│   │   ├── schedule.tsx            # 7-day schedule with DayPicker, resolution
+│   │   ├── statistics.tsx          # Workout history + volume/frequency stats
+│   │   ├── programs.tsx            # Program list with drill-down
+│   │   ├── plans.tsx               # Plan management (self/coach/AI plans)
+│   │   ├── create-routine.tsx      # Client routine builder with grouping
+│   │   ├── create-program.tsx      # Client program creation
+│   │   ├── generate.tsx            # AI generation form (goal/equipment/duration)
+│   │   ├── review-plan.tsx         # AI plan review (accept/edit/regenerate)
+│   │   ├── discover.tsx            # Trainer marketplace search
+│   │   ├── trainer-profile.tsx     # Public trainer profile view
+│   │   └── profile.tsx             # Client profile + settings
+│   ├── (trainer)/                  # Trainer tab group
+│   │   ├── _layout.tsx             # Trainer tab navigation
+│   │   ├── dashboard.tsx           # Stats grid (active clients, compliance, etc.)
+│   │   ├── clients.tsx             # Client list with search, real lastActive
+│   │   ├── client-detail.tsx       # Single client view with assignment status
+│   │   ├── programs.tsx            # Trainer program list
+│   │   ├── program-detail.tsx      # Program drill-down
+│   │   ├── create-routine.tsx      # Trainer routine builder with grouping
+│   │   ├── assign.tsx              # Assign routine to client with day picker
+│   │   ├── invite-client.tsx       # Invite by username/email/phone
+│   │   ├── profile.tsx             # Trainer profile view
+│   │   └── edit-profile.tsx        # Trainer profile edit (bio, specialties, etc.)
+│   ├── (workout)/                  # Workout session screens
+│   │   ├── session.tsx             # Live workout (timer, sets, rest, grouped exercises)
+│   │   ├── edit.tsx                # Pre-start workout editing
+│   │   └── summary.tsx             # Post-workout summary (hero stats, recap, reflection)
+│   └── (shared)/                   # Cross-role screens
+│       ├── _layout.tsx             # Shared Stack
+│       ├── settings.tsx            # App settings (unit toggle, dev tools)
+│       └── subscription.tsx        # Subscription paywall (billing adapter)
 ├── components/
-│   ├── ui/                     # Shared primitives
-│   │   ├── Screen.tsx          # SafeArea + ScrollView wrapper
-│   │   ├── Button.tsx          # Primary/secondary/outline variants
-│   │   ├── Card.tsx            # Surface card with optional press
-│   │   ├── Input.tsx           # Text input with label, error
-│   │   ├── Badge.tsx           # Colored pill badge
-│   │   ├── DayPicker.tsx       # Multi-select day-of-week
-│   │   └── PremiumGate.tsx     # Lock overlay when free limit hit
-│   ├── navigation/
-│   │   └── TabBarIcon.tsx      # Ionicons tab icon
-│   └── workout/
-│       ├── ExerciseCard.tsx    # Exercise display in session
-│       ├── SetRow.tsx          # Reps × weight row
-│       ├── ProgressBar.tsx     # Visual progress ring/bar
-│       └── RestTimer.tsx       # Countdown rest timer
+│   ├── ui/                         # Shared UI primitives
+│   │   ├── Screen.tsx              # SafeAreaView wrapper with bg color
+│   │   ├── Button.tsx              # Theme-aware button (primary/outline/ghost)
+│   │   ├── Card.tsx                # Theme card with borderRadius, shadow
+│   │   ├── PlanBadge.tsx           # Colored badge for plan source (coach/self/AI)
+│   │   ├── SectionHeader.tsx       # Section title with optional action
+│   │   ├── EmptyState.tsx          # Empty state with icon + message + CTA
+│   │   ├── SegmentedControl.tsx    # iOS-style segmented tab switcher
+│   │   ├── WeightUnitToggle.tsx    # kg/lb toggle using preferencesStore
+│   │   ├── DayPicker.tsx           # 7-day horizontal picker (Mon–Sun)
+│   │   └── PremiumGate.tsx         # Premium feature gate overlay
+│   ├── workout/                    # Workout-specific components
+│   │   ├── ExerciseCard.tsx        # Single exercise display in session
+│   │   ├── ExerciseGroupCard.tsx   # Grouped exercises (superset/triset/giantset)
+│   │   ├── SetRow.tsx              # Individual set row (reps, weight, check)
+│   │   ├── RestTimer.tsx           # Countdown rest timer
+│   │   ├── SummaryHeroStat.tsx     # Large stat display (duration, volume, sets)
+│   │   ├── SummaryRecapRow.tsx     # Per-exercise recap in summary
+│   │   ├── SummaryAchievements.tsx # Achievement badges in summary
+│   │   └── ReflectionSheet.tsx     # Post-workout effort/notes sheet
+│   └── navigation/
+│       └── ClientTabSwipeView.tsx  # Swipeable tab container for client views
 ├── config/
-│   ├── theme.ts               # Dark theme tokens (colors, spacing, fontSize, borderRadius)
-│   ├── constants.ts           # Feature flags, FREE_AI_GENERATION_LIMIT=3
-│   └── supabase.ts            # createClient with AsyncStorage adapter
-├── data/
-│   ├── exercises.ts           # 27 exercise objects (name, muscle, equipment, instructions)
-│   ├── clients.ts             # 5 mock clients (for trainer views before real data)
-│   └── routines.ts            # 5 mock routines (for demo/fallback)
+│   ├── theme.ts                    # Design tokens (colors, spacing, fontSize, borderRadius)
+│   ├── constants.ts                # App-wide constants
+│   ├── supabase.ts                 # Supabase client init
+│   ├── copy.ts                     # All user-facing strings (centralized)
+│   ├── featureGates.ts             # Feature limits (ai_generation: 3, trial: 7d)
+│   └── billing.ts                  # RevenueCat env config (keys from EXPO_PUBLIC_*)
+├── data/                           # Static seed/demo data
+│   ├── exercises.ts                # Exercise library
+│   ├── routines.ts                 # Demo routines
+│   └── clients.ts                  # Demo client data
+├── docs/
+│   ├── architecture.md             # Architecture overview
+│   ├── product-requirements.md     # PRD
+│   ├── mvp-roadmap.md              # Phase roadmap
+│   └── deploy-runbook-phase8.md    # Deploy runbook (migrations + Edge Function)
 ├── hooks/
-│   ├── useSession.ts          # Bootstrap auth: restore session, fetch profile, hydrate stores
-│   ├── useUserId.ts           # Convenience: extract user.id from authStore
-│   ├── usePrograms.ts         # Fetch programs for current user
-│   ├── useRoutines.ts         # Fetch routines for a program
-│   ├── useTrainerClients.ts   # Fetch trainer's linked clients
-│   ├── useTrainerSearch.ts    # Search public trainers (marketplace)
-│   ├── useReviews.ts          # Fetch/submit trainer reviews
-│   ├── useRealtime.ts         # Supabase realtime subscription (assignments)
-│   └── usePremiumGate.ts      # AI generation usage tracking
+│   ├── useSession.ts               # Auth bootstrap + store hydration
+│   ├── useEntitlement.ts           # Entitlement state hook
+│   ├── useFeatureGate.ts           # Feature gate check (allowed/upgrade_required)
+│   ├── usePremiumGate.ts           # Premium gate convenience hook
+│   ├── usePrograms.ts              # Programs data hook
+│   ├── useRoutines.ts              # Routines data hook
+│   ├── useRealtime.ts              # Supabase realtime subscription
+│   ├── useTrainerClients.ts        # Trainer client list hook
+│   ├── useTrainerSearch.ts         # Trainer search hook
+│   ├── useReviews.ts               # Reviews data hook
+│   └── useUserId.ts                # Current user ID shortcut
 ├── services/
-│   ├── auth.ts                # signIn, signUp, signOut, onAuthStateChange
-│   ├── profiles.ts            # getProfile, updateProfile (Profile type defined here)
-│   ├── programs.ts            # CRUD programs, saveGeneratedPlan, endorseProgram
-│   ├── workouts.ts            # saveCompletedWorkout, fetchWorkoutHistory
-│   ├── assignments.ts         # CRUD assignments, updateStatus
-│   ├── trainer.ts             # inviteClient, fetchTrainerDashboardStats
-│   ├── marketplace.ts         # searchTrainers, checkUsername, setUsername, reviews
-│   ├── generation.ts          # generatePlan (calls Edge Function), getGenerationCount
-│   └── storage.ts             # get/set/remove from SecureStore
+│   ├── auth.ts                     # signIn, signUp, signOut, getSession, onAuthStateChange
+│   ├── profiles.ts                 # getProfile, updateProfile
+│   ├── programs.ts                 # CRUD programs/routines, fetchTrainer/ClientRoutines, saveGeneratedPlan, endorseProgram
+│   ├── workouts.ts                 # saveCompletedWorkout, fetchWorkoutHistory, fetchWorkoutStats
+│   ├── assignments.ts              # Assignment CRUD
+│   ├── trainer.ts                  # fetchTrainerClients (real lastActive), linkClient, fetchTrainerDashboardStats
+│   ├── marketplace.ts              # searchTrainers, getTrainerPublicProfile, reviews, invites, username, requestTraining
+│   ├── generation.ts               # generatePlan (Edge Function), getGenerationCount, mock generation, error normalization
+│   ├── schedule.ts                 # resolveDayRoutine (priority: trainer > self/AI), assignmentToWorkoutRoutine
+│   ├── units.ts                    # kg/lb conversion, formatWeightWithUnit, parseWeightInputToKg, warmup helpers
+│   ├── routineDrafts.ts            # AsyncStorage draft persistence for routine builder
+│   ├── entitlements.ts             # loadEntitlementRecord, resolveEntitlement, syncBillingEntitlement, ensureTrialRecord
+│   ├── storage.ts                  # SecureStore token wrapper (legacy)
+│   └── billing/
+│       ├── BillingAdapter.ts       # Abstract adapter interface (plans, purchase, restore, customerState)
+│       ├── MockBillingAdapter.ts   # Mock implementation for dev/testing
+│       └── RevenueCatBillingAdapter.ts # RevenueCat implementation (functional but needs store setup)
 ├── store/
-│   ├── authStore.ts           # NOT persisted — session, user, profile, role, logout resets others
-│   ├── workoutStore.ts        # Persisted (AsyncStorage 'workout-storage') — active session state
-│   └── assignmentStore.ts     # Persisted (AsyncStorage 'assignment-storage') — client assignments
+│   ├── authStore.ts                # Auth state (user, profile, role, loading, hasOnboarded, clearUserScope)
+│   ├── workoutStore.ts             # Active session, exercise logs, timer, pause/resume, history
+│   ├── assignmentStore.ts          # Assignments, notifications, dayOverrides, schedule resolution
+│   ├── preferencesStore.ts         # Weight unit preference (kg/lb), persisted
+│   ├── entitlementStore.ts         # Entitlement record + resolved state, hydrate/refresh/reset
+│   └── devEntitlementStore.ts      # Dev scenario overrides (7 scenarios), mock generation toggle
 ├── types/
-│   ├── user.ts                # UserRole, UserProfile
-│   ├── workout.ts             # Exercise, WorkoutExercise, ExerciseLog, MuscleGroup, Equipment, Difficulty
-│   ├── assignment.ts          # Assignment interface
-│   ├── generation.ts          # GenerationRequest, GeneratedPlan, GeneratedRoutine, GenerationError
-│   └── marketplace.ts         # TrainerListing, Review
+│   ├── workout.ts                  # WeightUnit, WorkoutEffort, WorkoutExerciseGroupType, Exercise, WorkoutSet, WorkoutExercise, SetLog, ExerciseLog, ActiveSession, WorkoutRoutine, etc.
+│   ├── assignment.ts               # Assignment, ClientNotification, TrainerClient, ResolvedDayRoutine, DayOfWeek, AssignmentSource, DayRoutineResolutionReason
+│   ├── entitlement.ts              # EntitlementState, PlanTier, BillingSource, FeatureKey, EntitlementRecord, ResolvedEntitlement, FeatureGateResult
+│   ├── generation.ts               # GenerationRequest, GeneratedPlan, GeneratedRoutine, GenerationError, AppGenerationError, GenerationFailureCode
+│   ├── marketplace.ts              # TrainerPublicProfile, Review, Invite, InviteType
+│   └── user.ts                     # UserRole, Profile
 ├── supabase/
-│   ├── schema.sql             # Base schema (6 tables, RLS, trigger) — DEPLOYED
+│   ├── schema.sql                  # Base schema (6 tables, RLS, triggers)
 │   ├── migrations/
-│   │   └── phase7c_ai_generation.sql  # ALTER TABLE additions — NOT YET APPLIED
+│   │   ├── phase7c_hosted_repair.sql  # 283-line mega-migration (5 parts, NOT APPLIED)
+│   │   └── phase10_entitlements.sql   # Entitlements infrastructure (NOT APPLIED)
 │   └── functions/
 │       └── generate-plan/
-│           └── index.ts       # Deno Edge Function (OpenAI, auth, premium gate)
-├── docs/
-│   ├── architecture.md        # Stack, routing, state management, design system
-│   ├── product-requirements.md # PRD with phase breakdown
-│   └── mvp-roadmap.md         # Phase 1-4 roadmap (needs updating)
-├── tests/                     # EMPTY — no tests written
-├── features/                  # EMPTY — reserved for feature modules
-├── AGENTS.md                  # Agent instructions (partially outdated)
-├── TASKS.md                   # Phase 1-4 checklist (needs updating for Phase 5-7)
-├── README.md                  # Setup instructions
-├── package.json               # Deps, scripts
-├── tsconfig.json              # Strict, exclude supabase/functions
-├── app.json                   # Expo config (scheme: ai-gym-app)
-└── .env                       # Supabase URL + anon key (see §4)
+│           └── index.ts            # Edge Function: OpenAI generation (NOT DEPLOYED)
+├── AGENTS.md                       # Agent behavioral rules
+├── TASKS.md                        # Phase checklist (through Phase 9)
+├── handoff.md                      # This file
+└── package.json
 ```
 
 ---
 
-## 4. Environment Variables & Secrets
+## 4. Design System
 
-### `.env` (committed — for local dev only)
+### Color Tokens (`config/theme.ts`)
 
-| Variable | Purpose | Status |
-|----------|---------|--------|
-| `EXPO_PUBLIC_SUPABASE_URL` | Supabase project URL | Set (real value) |
-| `EXPO_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon/public key | Set (real value) |
-| `EXPO_PUBLIC_API_URL` | Phase 2 REST placeholder | Empty |
-| `EXPO_PUBLIC_GOOGLE_CLIENT_ID` | OAuth Phase 2 | Empty |
-| `EXPO_PUBLIC_APPLE_CLIENT_ID` | OAuth Phase 2 | Empty |
-| `EXPO_PUBLIC_ENABLE_AI` | Legacy flag (unused, check constants.ts instead) | `false` |
-| `EXPO_PUBLIC_ENABLE_CHAT` | Legacy flag (unused) | `false` |
+```typescript
+colors: {
+  background: '#0D0D0D',     // App background
+  surface:    '#1A1A1A',     // Elevated surface
+  card:       '#1E1E1E',     // Card background
+  cardBorder: '#262626',     // Card border
+  accent:     '#4ADE80',     // Primary green accent
+  textPrimary:   '#FFFFFF',
+  textSecondary: '#A0A0A0',
+  textMuted:     '#6B6B6B',
+  border:        '#2A2A2A',
+  dangerLight:   '#F87171',  // Semantic: errors, destructive
+  warningLight:  '#FACC15',  // Semantic: warnings, cautions
+  infoLight:     '#60A5FA',  // Semantic: info, coach plans
+}
+```
 
-### Supabase secrets (server-side, not in `.env`)
+### Spacing, Typography, Radii
 
-| Secret | Purpose | Status |
-|--------|---------|--------|
-| `OPENAI_API_KEY` | Used by `generate-plan` Edge Function | **NOT YET SET** — must be added via `supabase secrets set OPENAI_API_KEY=sk-...` |
+```typescript
+spacing:  { xs: 4, sm: 8, md: 16, lg: 24, xl: 32, xxl: 48 }
+fontSize: { xs: 12, sm: 14, md: 16, lg: 20, xl: 24, xxl: 32 }
+borderRadius: { sm: 6, md: 10, lg: 14, xl: 20, full: 9999 }
+```
 
-### MCP config
+### Plan Source Colors (`config/copy.ts`)
 
-`.vscode/mcp.json` lives at the **parent** workspace level (`/Users/bellomohammed/Dev/.vscode/mcp.json`) and configures the Supabase MCP server with project ref `fcsllrdvsizlrrqatgeq`.
+| Source | Label | Color |
+|--------|-------|-------|
+| `trainer` | Coach Plan | `#60A5FA` (blue) |
+| `self` | Self Plan | `#A78BFA` (purple) |
+| `ai` | AI Plan | `#4ADE80` (green/accent) |
 
 ---
 
-## 5. Database Schema
+## 5. Screens Inventory
 
-### Live (deployed via `schema.sql`)
+### (auth)/ — Authentication Flow
 
-| Table | Key Columns | RLS |
-|-------|------------|-----|
-| `profiles` | id (FK auth.users), role, full_name, avatar_url, goal, bio, created_at | Own read/write, trainers read linked |
-| `trainer_client_links` | trainer_id, client_id, status (active/inactive/pending), unique(trainer_id, client_id) | Trainers manage, clients read |
-| `programs` | name, description, difficulty, days_per_week, created_by | Creator manages, linked clients read |
-| `routines` | program_id, name, difficulty, duration_minutes, exercises_json (JSONB), sort_order | Via program owner policy |
-| `assignments` | trainer_id, client_id, routine_id, routine_name, program_name, schedule_days[], status, note | Trainers manage, clients read/update status |
-| `completed_workouts` | user_id, routine_id, routine_name, started_at, completed_at, duration_seconds, volume/sets/reps, exercises_json | Own manage, trainers read linked |
+| Screen | File | Status | Description |
+|--------|------|--------|-------------|
+| Onboarding | `onboarding.tsx` | ✅ Complete | Swipe intro carousel → login |
+| Login | `login.tsx` | ✅ Complete | Email/password with Supabase auth |
+| Register | `register.tsx` | ✅ Complete | Name, email, password, role picker |
+| OTP Verify | `otp-verify.tsx` | 🔸 Placeholder | UI exists, no backend hook |
+| Biometric | `biometric-setup.tsx` | 🔸 Placeholder | UI exists, no biometric API |
 
-**Trigger:** `on_auth_user_created` → auto-inserts a `profiles` row using `raw_user_meta_data.role` and `raw_user_meta_data.full_name`.
+### (client)/ — Client Screens
 
-### Pending migration: `phase7c_ai_generation.sql`
+| Screen | File | Status | Description |
+|--------|------|--------|-------------|
+| Workout | `workout.tsx` | ✅ Complete | Today's workout, notification banner (copy.ts), assignment-resolved routine, Start button |
+| Schedule | `schedule.tsx` | ✅ Complete | 7-day DayPicker, resolution reasons, override support |
+| Statistics | `statistics.tsx` | ✅ Complete | Workout history list + volume/frequency stats |
+| Programs | `programs.tsx` | ✅ Complete | Program list with drill-down |
+| Plans | `plans.tsx` | ✅ Complete | Coach/Self/AI plan sections with PlanBadge |
+| Create Routine | `create-routine.tsx` | ✅ Complete | Exercise picker, grouping (superset/triset/giantset), draft persistence |
+| Create Program | `create-program.tsx` | ✅ Complete | Program creation with routine selection |
+| Generate | `generate.tsx` | ✅ Complete | AI generation form (goal, equipment, duration, horizon) |
+| Review Plan | `review-plan.tsx` | ✅ Complete | AI plan review with accept/edit/regenerate |
+| Discover | `discover.tsx` | ✅ Complete | Trainer search with specialty filter chips |
+| Trainer Profile | `trainer-profile.tsx` | ✅ Complete | Public trainer profile with reviews, request training |
+| Profile | `profile.tsx` | ✅ Complete | Client profile view |
 
-```sql
--- programs: add source tracking and trainer endorsement
-ALTER TABLE public.programs
-  ADD COLUMN IF NOT EXISTS source text NOT NULL DEFAULT 'client'
-    CHECK (source IN ('client', 'trainer', 'ai', 'ai_endorsed')),
-  ADD COLUMN IF NOT EXISTS generation_metadata jsonb,
-  ADD COLUMN IF NOT EXISTS trainer_endorsed_by uuid REFERENCES public.profiles(id),
-  ADD COLUMN IF NOT EXISTS trainer_endorsed_at timestamptz;
+### (trainer)/ — Trainer Screens
 
--- profiles: track free AI generation count
-ALTER TABLE public.profiles
-  ADD COLUMN IF NOT EXISTS ai_generation_count integer NOT NULL DEFAULT 0;
+| Screen | File | Status | Description |
+|--------|------|--------|-------------|
+| Dashboard | `dashboard.tsx` | ✅ Complete | Stats grid (active clients, compliance, sessions) |
+| Clients | `clients.tsx` | ✅ Complete | Client list, search, real lastActive timestamps |
+| Client Detail | `client-detail.tsx` | ✅ Complete | Assignment status labels (Awaiting/InProgress/Completed from copy.ts) |
+| Programs | `programs.tsx` | ✅ Complete | Trainer program list |
+| Program Detail | `program-detail.tsx` | ✅ Complete | Program drill-down with routines |
+| Create Routine | `create-routine.tsx` | ✅ Complete | Trainer routine builder with exercise grouping |
+| Assign | `assign.tsx` | ✅ Complete | Assign routine to client, day picker, post-assign alert (copy.ts) |
+| Invite Client | `invite-client.tsx` | ✅ Complete | Invite by username/email/phone, post-link alerts (copy.ts) |
+| Profile | `profile.tsx` | ✅ Complete | Trainer profile view |
+| Edit Profile | `edit-profile.tsx` | ✅ Complete | Bio, specialties, certifications, intro video |
 
--- RPC to increment counter
-CREATE OR REPLACE FUNCTION public.increment_ai_generation_count(user_id uuid)
-RETURNS void LANGUAGE sql SECURITY DEFINER AS $$
-  UPDATE public.profiles SET ai_generation_count = ai_generation_count + 1 WHERE id = user_id;
-$$;
-```
+### (workout)/ — Workout Session
 
-### Missing migration: Marketplace/profile columns
+| Screen | File | Status | Description |
+|--------|------|--------|-------------|
+| Session | `session.tsx` | ✅ Complete | Live workout: timer, set logging, rest timer, grouped exercises, pause/resume |
+| Edit | `edit.tsx` | ✅ Complete | Pre-start workout editing (reorder, add/remove exercises) |
+| Summary | `summary.tsx` | ✅ Complete | Hero stats, per-exercise recap, achievements, reflection sheet |
 
-The `services/profiles.ts` Profile type and `services/marketplace.ts` reference columns that **do NOT exist** in `schema.sql` or any migration:
+### (shared)/ — Cross-Role Screens
 
-```
-username text UNIQUE
-specialties text[]
-certifications text[]
-intro_video text
-experience_years integer DEFAULT 0
-is_public boolean DEFAULT false
-rating_avg real DEFAULT 0
-rating_count integer DEFAULT 0
-```
-
-These need an ALTER TABLE migration before marketplace features work at runtime. The code compiles because TypeScript doesn't validate against the live DB schema — it only checks the interface.
-
----
-
-## 6. Auth Flow
-
-1. **Cold start** → `hooks/useSession.ts` calls `supabase.auth.getSession()` to restore a persisted session.
-2. If a session exists → fetch `profiles` row → `authStore.setProfile(profile)` sets `role`.
-3. `supabase.auth.onAuthStateChange` listens for SIGNED_IN/SIGNED_OUT/TOKEN_REFRESHED.
-4. `app/index.tsx` redirects based on state:
-   - `loading: true` → spinner
-   - `!hasOnboarded` → `(auth)/onboarding`
-   - `!isAuthenticated` → `(auth)/login`
-   - `role === 'trainer'` → `(trainer)/dashboard`
-   - else → `(client)/workout`
-5. **Logout** → `authStore.logout()` calls `signOut()` (Supabase), resets workoutStore and assignmentStore.
-6. `hasOnboarded` is persisted in AsyncStorage (`ai-gym:hasOnboarded`).
-
-**Auth method:** Email + password only. OAuth (Google, Apple) is scaffolded in the UI but not wired.
+| Screen | File | Status | Description |
+|--------|------|--------|-------------|
+| Settings | `settings.tsx` | ✅ Complete | Unit toggle (kg/lb), dev entitlement tools (__DEV__ only) |
+| Subscription | `subscription.tsx` | ✅ Complete | Paywall with billing adapter integration |
 
 ---
 
-## 7. State Management Detail
+## 6. Services Layer
+
+### Core Services
+
+| Service | File | Exports |
+|---------|------|---------|
+| **auth** | `services/auth.ts` | `signIn`, `signUp`, `signOut`, `getSession`, `onAuthStateChange` |
+| **profiles** | `services/profiles.ts` | `getProfile`, `updateProfile` |
+| **programs** | `services/programs.ts` | `fetchPrograms`, `createProgram`, `deleteProgram`, `fetchRoutines`, `createRoutine`, `updateRoutine`, `deleteRoutine`, `fetchTrainerRoutines`, `fetchClientRoutines`, `fetchClientPrograms`, `routineRowToWorkoutRoutine`, `saveGeneratedPlan`, `endorseProgram` |
+| **workouts** | `services/workouts.ts` | `saveCompletedWorkout`, `fetchWorkoutHistory`, `fetchWorkoutStats` |
+| **assignments** | `services/assignments.ts` | Assignment CRUD operations |
+| **trainer** | `services/trainer.ts` | `fetchTrainerClients` (real lastActive: New/Today/Xd ago/Xw ago), `linkClient`, `fetchTrainerDashboardStats` |
+| **marketplace** | `services/marketplace.ts` | `searchTrainers`, `getTrainerPublicProfile`, `fetchReviews`, `submitReview`, `checkUsernameAvailable`, `setUsername`, `findByUsername`, `createInvite`, `fetchTrainerInvites`, `updateTrainerProfile`, `requestTraining` |
+| **generation** | `services/generation.ts` | `generatePlan` (Edge Function call + dev mock + error normalization), `getGenerationCount` |
+| **schedule** | `services/schedule.ts` | `resolveDayRoutine` (priority: trainer > self/AI, supports manual overrides), `assignmentToWorkoutRoutine` |
+| **units** | `services/units.ts` | `convertKgToUnit`, `convertUnitToKg`, `normalizeStoredKg`, `parseWeightInputToKg`, `formatWeightValue`, `formatWeightWithUnit`, `formatVolumeWithUnit`, `getWarmupWeightKg`, `getWarmupReps` |
+| **routineDrafts** | `services/routineDrafts.ts` | `loadCreateRoutineDraft`, `saveCreateRoutineDraft`, `clearCreateRoutineDraft` + `RoutineBuilderDraftExercise`, `CreateRoutineDraft` types |
+| **entitlements** | `services/entitlements.ts` | `loadEntitlementRecord`, `saveEntitlementRecord`, `ensureTrialRecord`, `resolveEntitlement`, `syncBillingEntitlement`, `applyBillingCustomerState`, `getBillingAdapter`, `setBillingAdapter` |
+| **storage** | `services/storage.ts` | `getToken`, `setToken`, `clearToken` (legacy SecureStore wrapper) |
+
+### Billing Adapters (`services/billing/`)
+
+| File | Description |
+|------|-------------|
+| `BillingAdapter.ts` | Abstract interface: `isAvailable`, `configure`, `listPlans`, `purchase`, `restorePurchases`, `getCustomerState`, `openManageSubscription`, `logOut` |
+| `MockBillingAdapter.ts` | Returns mock data for dev/testing (always available, returns sample plans) |
+| `RevenueCatBillingAdapter.ts` | Real RevenueCat integration (functional skeleton, needs API keys + store setup) |
+
+**Adapter selection** (in `entitlements.ts`): If `EXPO_PUBLIC_REVENUECAT_IOS_API_KEY` or `EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY` is set → RevenueCat adapter, otherwise → Mock adapter.
+
+---
+
+## 7. State Management (Zustand — 6 Stores)
 
 ### authStore (`store/authStore.ts`)
-- **NOT persisted** — session is restored from Supabase on cold start.
-- Fields: `loading`, `isAuthenticated`, `role`, `pendingRole`, `hasOnboarded`, `user` (Supabase User), `profile` (Profile row).
-- `logout()` fires Supabase `signOut()` and calls `.reset()` on workoutStore and assignmentStore.
+- **Persistence:** None (session from Supabase)
+- **Shape:** `{ loading, isAuthenticated, role, pendingRole, hasOnboarded, user, session, profile }`
+- **Key actions:** `setUser`, `setSession`, `setProfile`, `setLoading`, `setPendingRole`, `setHasOnboarded`, `clearUserScope` (resets other stores on sign-out), `logout`
 
 ### workoutStore (`store/workoutStore.ts`)
-- **Persisted** via AsyncStorage key `'workout-storage'`.
-- Tracks active workout session state: current routine, exercise index, sets completed, timer, volume.
-- `reset()` clears active session (called on logout).
+- **Persistence:** AsyncStorage `'workout-storage'`
+- **Shape:** `{ activeSession, exerciseLogs, currentExerciseIndex, elapsedSeconds, isRunning, history }`
+- **Key actions:** `startWorkout`, `logSet`, `nextExercise`, `prevExercise`, `finishWorkout`, `pauseWorkout`, `resumeWorkout`, `cancelWorkout`, `updateExerciseNote`, `hydrateHistory`
 
 ### assignmentStore (`store/assignmentStore.ts`)
-- **Persisted** via AsyncStorage key `'assignment-storage'`.
-- Caches client assignments fetched from Supabase.
-- `reset()` clears cache (called on logout).
+- **Persistence:** AsyncStorage `'assignment-storage'`
+- **Shape:** `{ assignments[], notifications[], daySelections{}, hydrating }`
+- **Key actions:** `hydrate`, `createAssignment`, `updateAssignmentStatus`, `selfAssign`, `resolveDayRoutine`, `markNotificationRead`, `markAllNotificationsRead`, `setDayOverride`, `clearDayOverride`, `removeRoutineReferences`, `syncRoutineOverrideSnapshot`
 
-### Historical bug: Zustand infinite render loops
-Early builds had infinite re-renders caused by creating new object references in selectors. **Fix:** Always use atomic selectors (`s => s.field`) not object-spread selectors (`s => ({ a: s.a, b: s.b })`).
+### preferencesStore (`store/preferencesStore.ts`)
+- **Persistence:** AsyncStorage `'preferences-storage'`
+- **Shape:** `{ weightUnit: 'kg' | 'lb' }`
+- **Key actions:** `setWeightUnit`, `toggleWeightUnit`
+- **Usage:** Used by SetRow, SummaryRecapRow, StatisticsScreen, units.ts helpers
 
----
+### entitlementStore (`store/entitlementStore.ts`)
+- **Persistence:** None (fetched from Supabase + billing adapter on hydrate)
+- **Shape:** `{ loading, record: EntitlementRecord | null, resolved: ResolvedEntitlement | null }`
+- **Key actions:** `hydrate(userId, role)`, `refresh(userId, role)`, `reset()`
+- **Hydration flow:** `ensureTrialRecord` (clients) → `syncBillingEntitlement` → `resolveEntitlement`
 
-## 8. AI Generation Architecture
-
-### Client-side flow
-
-1. `(client)/workout.tsx` → "Generate Workout" button → `router.push('/(client)/generate')`.
-2. `(client)/generate.tsx` → user selects goal, horizon (today/week/month), daysPerWeek, duration, difficulty, equipment, focus areas.
-3. `usePremiumGate()` hook checks `ai_generation_count` against `FREE_AI_GENERATION_LIMIT` (3).
-4. If gate open → `services/generation.ts` → `supabase.functions.invoke('generate-plan', { body: request })`.
-5. On success → navigate to `(client)/review-plan.tsx` with plan data.
-6. User reviews routines/exercises → "Save Program" calls `services/programs.ts → saveGeneratedPlan()` → inserts program + routines with `source: 'ai'`.
-
-### Edge Function (`supabase/functions/generate-plan/index.ts`)
-
-- **Runtime:** Deno (Supabase Edge Functions).
-- **Auth:** Extracts JWT from `Authorization` header, validates via `supabase.auth.getUser(token)`.
-- **Premium gate:** Checks `profiles.ai_generation_count >= 3` → returns 403 with usage info.
-- **AI call:** OpenAI Chat Completions API with `gpt-4o-mini`, `response_format: { type: 'json_object' }`.
-- **Prompt:** System prompt instructs the model to return a specific JSON schema matching `GeneratedPlan`.
-- **Post-generation:** Calls RPC `increment_ai_generation_count(userId)`.
-- **CORS:** Handles OPTIONS preflight for web compatibility.
-
-### Trainer endorsement
-
-- `(trainer)/client-detail.tsx` shows AI-generated programs for a linked client.
-- "Endorse" button calls `services/programs.ts → endorseProgram()` → updates `source` to `'ai_endorsed'`, sets `trainer_endorsed_by` and `trainer_endorsed_at`.
-
-### What's NOT deployed yet
-
-1. Migration `phase7c_ai_generation.sql` — must be run in Supabase SQL Editor.
-2. Edge Function `generate-plan` — must be deployed via `supabase functions deploy generate-plan`.
-3. `OPENAI_API_KEY` secret — must be set via `supabase secrets set`.
+### devEntitlementStore (`store/devEntitlementStore.ts`)
+- **Persistence:** AsyncStorage `'dev-entitlement-storage'`
+- **Shape:** `{ scenario: DevEntitlementScenario, mockGenerationEnabled: boolean }`
+- **Scenarios:** `use_real`, `free_under_cap`, `free_at_cap`, `trial_active`, `premium_active`, `admin_override`, `expired_trial`
+- **Used by:** `generation.ts` (respects mock scenarios in `__DEV__`), `settings.tsx` (UI for toggling)
 
 ---
 
-## 9. Feature Flags & Constants
+## 8. Types Reference
 
-`config/constants.ts`:
+### workout.ts (117 lines)
+- `WeightUnit = 'kg' | 'lb'`
+- `WorkoutEffort = 'easy' | 'solid' | 'challenging' | 'max_effort'`
+- `WorkoutExerciseGroupType = 'single' | 'superset' | 'triset' | 'giantset'`
+- `Difficulty = 'beginner' | 'intermediate' | 'advanced'`
+- `Equipment` — union of 10+ equipment types
+- `MuscleGroup` — union of 15+ muscle groups
+- `Exercise { id, name, muscleGroups, equipment, description?, imageUrl? }`
+- `WorkoutSet { reps, weight, restSeconds?, isWarmup? }`
+- `WorkoutExercise { exercise, sets, groupId?, groupType?, groupOrder? }`
+- `SetLog { reps, weight, restSeconds, completed, isWarmup? }`
+- `ExerciseLog { exercise, sets: SetLog[], note?, groupId?, groupType?, groupOrder? }`
+- `ActiveSession { id, routineId?, routineName, startedAt, exercises, status?, elapsedSeconds?, lastResumedAt? }`
+- `WorkoutRoutine { id, name, exercises, difficulty, programName?, assignedBy?, source? }`
+- `CompletedWorkout { id, userId, routineName, exercises: ExerciseLog[], startedAt, completedAt, durationMinutes, totalVolume, totalSets, effort?, notes? }`
 
+### assignment.ts (65 lines)
+- `AssignmentSource = 'trainer' | 'self' | 'ai'`
+- `AssignmentStatus = 'assigned' | 'in_progress' | 'completed'`
+- `DayOfWeek = 'Mon' | 'Tue' | ... | 'Sun'`
+- `DayRoutineResolutionReason = 'manual_override' | 'coach_assigned' | 'self_scheduled' | 'ai_scheduled' | 'empty'`
+- `Assignment { id, trainerId, clientId, routineId, routineName, programName?, scheduleDays, status, source, note?, assignedAt, startedAt?, completedAt?, exercisesJson? }`
+- `ClientNotification { id, type, title, body, assignmentId?, read, createdAt }`
+- `TrainerClient { clientId, clientName, clientInitials, goal, email, active, lastActive, workoutCount, assignmentCount, adherencePercent, memberSince }`
+- `ResolvedDayRoutine { day, activeRoutine, activeAssignment, reason, candidates, isManualOverride }`
+
+### entitlement.ts (38 lines)
+- `EntitlementState = 'free' | 'trial_active' | 'premium_active' | 'admin_override'`
+- `PlanTier = 'free' | 'premium'`
+- `BillingSource = 'mock' | 'manual' | 'admin' | 'revenuecat'`
+- `FeatureKey = 'ai_generation' | 'grouped_routine_authoring'`
+- `EntitlementRecord { planTier, trialStartedAt, trialEndsAt, trialUsed, adminOverride, source, updatedAt }`
+- `ResolvedEntitlement { role, state, planTier, trialStartedAt, trialEndsAt, isTrialActive, isPremium, isAdminOverride, canUsePremiumFeatures }`
+- `FeatureGateResult { feature, allowed, requiresUpgrade, reason }`
+
+### generation.ts
+- `GenerationRequest { goal, equipment[], difficulty, durationMinutes, horizon, daysPerWeek, focusAreas?, notes? }`
+- `GeneratedPlan { title, goal, summary, horizon, daysPerWeek, routines: GeneratedRoutine[], generatedAt, model, request }`
+- `GeneratedRoutine { name, difficulty, durationMinutes, exercises: WorkoutExercise[] }`
+- `GenerationFailureCode = 'generation_limit_reached' | 'generation_failed' | 'transport_failure' | 'backend_unavailable'`
+- `AppGenerationError` extends Error with `code`, `used?`, `limit?`, `retryable`
+
+### marketplace.ts
+- `TrainerPublicProfile { id, username, fullName, avatarUrl, bio, specialties[], certifications[], introVideo, experienceYears, ratingAvg, ratingCount }`
+- `Review { id, trainerId, clientId, clientName, clientAvatar, rating, title, body, testimonialVideo?, createdAt }`
+- `Invite { id, trainerId, inviteType, inviteValue, status, createdAt, acceptedAt }`
+- `InviteType = 'username' | 'email' | 'phone'`
+
+---
+
+## 9. Config Reference
+
+### featureGates.ts
 ```typescript
-ENABLE_AI_GENERATION: true     // AI generation UI visible
-ENABLE_MARKETPLACE: true       // Trainer search/discovery visible
-ENABLE_CHAT: false             // Messaging not built
-ENABLE_VOIP: false             // Voice coaching not built
-ENABLE_SUBSCRIPTIONS: false    // RevenueCat not integrated
-FREE_AI_GENERATION_LIMIT: 3    // Free tier cap
+FEATURE_GATES = {
+  ai_generation: { freeLimit: 3 },
+  grouped_routine_authoring: {},
+};
+TRIAL_LENGTH_DAYS = 7;
+FREE_CUSTOM_ROUTINE_LIMIT = 3;
 ```
 
-The `.env` flags (`EXPO_PUBLIC_ENABLE_AI`, `EXPO_PUBLIC_ENABLE_CHAT`) are **legacy** and unused — the source of truth is `config/constants.ts`.
+### copy.ts — Centralized Copy Constants
+- `PLAN_LABEL` / `PLAN_COLOR` — Per-source labels and colors
+- `HEADERS` — Section header strings
+- `BUTTONS` — Button labels
+- `HELPER` — Helper/explanation text
+- `EMPTY` — Empty state messages
+- `CONFIRM` — Success confirmation strings
+- `TRAINER_LOOP` — Trainer conversion loop copy (invite alerts, assign alerts, status labels)
+- `CLIENT_NOTIF` — Client notification card copy
+- `DAY_ROUTINE_REASON_LABEL` — Human-readable reason labels
+
+### billing.ts
+- Reads `EXPO_PUBLIC_BILLING_ENV`, `EXPO_PUBLIC_REVENUECAT_IOS_API_KEY`, `EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY`, `EXPO_PUBLIC_REVENUECAT_ENTITLEMENT_ID`, `EXPO_PUBLIC_REVENUECAT_OFFERING_ID`, `EXPO_PUBLIC_REVENUECAT_EXPECTED_PRODUCT_IDS`, `EXPO_PUBLIC_REVENUECAT_EXPECTED_PACKAGE_IDS`
+- Environment: `'test'` (default) or `'production'`
 
 ---
 
-## 10. What Phase Is Complete
+## 10. Database Schema
 
-| Phase | Status | Scope |
-|-------|--------|-------|
-| 1 — Foundation | ✅ Complete | Shell, routing, mock auth, dark theme, all base screens |
-| 2 — Core (partial) | ✅ Complete | Supabase auth (email/pw), profiles, workout logging, programs CRUD |
-| 3 — AI (partial) | ~80% | AI generation coded but Edge Function not deployed |
-| 5 — Data Layer | ✅ Complete | Supabase schema, RLS, services, hooks |
-| 6 — Trainer Flow | ✅ Complete | Client management, assignments, realtime sync |
-| 6B — Marketplace | ✅ Code complete | Discover, trainer profiles, reviews, link requests (missing DB migration for profile columns) |
-| 7A — Workout Session | ✅ Complete | Live session, set/rep/weight logging, rest timer, summary, persist to Supabase |
-| 7B — Premium Gate | ✅ Complete | PremiumGate component, usePremiumGate hook, generation counter |
-| 7C — AI Generation UI | ✅ Code complete | generate.tsx, review-plan.tsx, endorsement in client-detail.tsx (needs migration + deploy) |
+### Base Tables (schema.sql — 6 tables, deployed)
 
-### Phases NOT started
+| Table | Description | Key Columns |
+|-------|-------------|-------------|
+| `profiles` | User profiles | id, full_name, email, role, avatar_url, bio, goal, created_at |
+| `trainer_client_links` | Trainer↔client relationships | trainer_id, client_id, status (active/pending) |
+| `programs` | Training programs | id, trainer_id, name, description, client_id? |
+| `routines` | Workout routines in programs | id, program_id, name, difficulty, exercises_json |
+| `assignments` | Routine assignments | id, trainer_id, client_id, routine_id, status, schedule_days, source |
+| `completed_workouts` | Workout history | id, user_id, routine_name, exercises, duration, volume |
 
-- **Phase 3 remainder:** Chat/messaging, voice coaching, progress photos
-- **Phase 4:** RevenueCat subscriptions, push notifications, app store submission, analytics, crash reporting
-- **Charts:** `statistics.tsx` is a placeholder — no chart library installed (victory-native or similar)
-- **OAuth:** Google and Apple sign-in UI exists but is not wired
-- **Tests:** `tests/` directory is empty; no test framework configured
+All tables have RLS enabled with `auth.uid()` policies.
 
----
+### Phase 7C Migration (NOT APPLIED — `phase7c_hosted_repair.sql`, 283 lines)
 
-## 11. Known Issues & Technical Debt
+5-part mega-migration:
+1. **Marketplace/profile columns:** `username`, `specialties[]`, `certifications[]`, `intro_video`, `experience_years`, `is_public`, `rating_avg`, `rating_count`, `ai_generation_count`
+2. **Phase 7C columns on programs:** `source`, `generation_metadata`, `trainer_endorsed_by`, `trainer_endorsed_at`
+3. **Reviews table:** `reviews` (trainer_id, client_id, rating, title, body, testimonial_video)
+4. **Invites table:** `invites` (trainer_id, invite_type, invite_value, status)
+5. **RPCs:** `check_username_available`, `find_user_by_username`, `find_user_by_email`, `search_trainers`, `increment_ai_generation_count`
+6. **RLS policies** for all new tables
 
-### Critical (blocks runtime behavior)
+### Phase 10 Migration (NOT APPLIED — `phase10_entitlements.sql`)
 
-1. **Missing marketplace migration** — `profiles` table lacks `username`, `specialties`, `certifications`, `intro_video`, `experience_years`, `is_public`, `rating_avg`, `rating_count`. Any marketplace query will fail at runtime. Create an ALTER TABLE migration.
+Entitlements infrastructure columns on profiles:
+- `plan_tier`, `trial_started_at`, `trial_ends_at`, `admin_override`
 
-2. **Phase 7C migration not applied** — `supabase/migrations/phase7c_ai_generation.sql` has not been run. AI generation will fail until `source`, `generation_metadata`, `trainer_endorsed_by/at`, and `ai_generation_count` columns exist.
+### Edge Function (NOT DEPLOYED — `supabase/functions/generate-plan/index.ts`)
 
-3. **Edge Function not deployed** — `supabase/functions/generate-plan/index.ts` exists locally but is not deployed. Run `supabase functions deploy generate-plan`.
-
-4. **OPENAI_API_KEY not set** — The Edge Function reads `Deno.env.get('OPENAI_API_KEY')`. Must set via `supabase secrets set OPENAI_API_KEY=sk-...`.
-
-### Medium
-
-5. **AGENTS.md outdated** — Still says "No backend integration (Phase 2)" and "No real API calls in Phase 1". Backend integration exists since Phase 5. Update to reflect current state.
-
-6. **TASKS.md outdated** — Only lists Phase 1-4. Phase 5, 6, 6B, 7A, 7B, 7C are not documented. Update to match actual progress.
-
-7. **docs/architecture.md outdated** — Lists Phase 1 feature flags (`AI_WORKOUT: false`, etc.) and doesn't mention Supabase, Edge Functions, or any Phase 5+ work.
-
-8. **App.tsx is dead code** — The file exists at repo root but expo-router uses `expo-router/entry` as the entry point. Can be deleted.
-
-9. **`otp-verify.tsx` is a stub** — OTP verification was never implemented. Either implement or remove.
-
-10. **`schedule.tsx` is a stub** — Empty screen. Either implement or remove.
-
-11. **`create-program.tsx` is a stub** — Client-side program creation not implemented.
-
-### Low
-
-12. **No ESLint/Prettier** — No code formatting or linting configured.
-
-13. **No `.gitignore` audit** — `.env` with real keys is likely committed. Consider using `.env.local` pattern.
-
-14. **`data/` mock files still present** — `clients.ts`, `routines.ts` were for Phase 1 demo. Some screens may still reference them instead of Supabase data.
-
-15. **`expo-secure-store` unused** — Storage migrated to AsyncStorage for Zustand persistence. SecureStore is still a dependency but `services/storage.ts` may be dead code.
+- Accepts `GenerationRequest`, calls OpenAI gpt-4o-mini
+- Increments `ai_generation_count` on profiles
+- Checks free limit (3) vs. premium/trial entitlement
+- Requires `OPENAI_API_KEY` secret on Supabase
 
 ---
 
-## 12. Color Reference (Dark Theme)
+## 11. Session & Auth Architecture
 
-From `config/theme.ts`:
+### Boot Sequence (`useSession` hook, called from root layout)
 
-| Token | Hex | Usage |
-|-------|-----|-------|
-| `background` | `#0D0D0D` | Screen background |
-| `surface` | `#1A1A1A` | Card/container background |
-| `card` | `#1E1E1E` | Elevated card |
-| `accent` | `#4ADE80` | Primary action, CTA, highlights |
-| `text` | `#FFFFFF` | Primary text |
-| `textSecondary` | `#A1A1AA` | Muted text |
-| `border` | `#2A2A2A` | Dividers, borders |
-| `danger` | (red) | Error states — **NOT `error`** |
-| `warning` | (amber) | Warning states |
-| `success` | (green) | Confirmation states |
+1. **Restore session:** `getSession()` from Supabase
+2. **Load profile:** `getProfile(user.id)` 
+3. **Hydrate stores in parallel:**
+   - `assignmentStore.hydrate(role, userId)`
+   - `workoutStore.hydrateHistory(userId)`
+   - `entitlementStore.hydrate(userId, role)`
+4. **Subscribe:** `onAuthStateChange` for SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED
 
-**Important:** There is no `colors.error` (use `colors.danger`) and no `colors.surfaceAlt` (use `colors.background` or `colors.surface`).
+### Sign-out Cleanup
 
----
+`clearUserScope({ clearPersisted: true })` in authStore resets:
+- assignmentStore
+- workoutStore
+- entitlementStore
 
-## 13. Workout Data Model
+### Route Resolution (`app/index.tsx`)
 
-The nested structure is critical and a common source of bugs:
-
-```typescript
-// types/workout.ts
-
-interface Exercise {
-  id: string;
-  name: string;
-  muscle: MuscleGroup;
-  equipment: Equipment;
-  instructions: string[];
-}
-
-interface WorkoutExercise {
-  exercise: Exercise;          // ← nested object, NOT flat
-  sets: ExerciseSet[];
-  restSeconds: number;
-  notes?: string;
-}
-
-// When mapping exercises in review-plan.tsx or session.tsx:
-// ✅ exercise.exercise.name
-// ❌ exercise.name  ← WRONG, this doesn't exist
+```
+loading → Spinner
+!hasOnboarded → /onboarding
+!isAuthenticated → /login
+role === 'trainer' → /trainer/dashboard
+else → /client/workout
 ```
 
-`routines.exercises_json` stores `WorkoutExercise[]` as JSONB in Postgres. The Edge Function's OpenAI prompt instructs the model to output this exact nested shape.
+---
+
+## 12. Entitlement & Billing Architecture
+
+### Flow
+
+```
+User signs in
+  → entitlementStore.hydrate(userId, role)
+    → ensureTrialRecord(userId)  [clients only — auto-starts 7-day trial]
+    → syncBillingEntitlement(userId, record)
+      → billingAdapter.isAvailable()
+      → billingAdapter.configure(userId)
+      → billingAdapter.getCustomerState()
+      → applyBillingCustomerState(record, customerState)
+    → resolveEntitlement(record, role)
+      → returns ResolvedEntitlement { state, isPremium, isTrialActive, canUsePremiumFeatures }
+```
+
+### Entitlement States
+
+| State | Meaning |
+|-------|---------|
+| `free` | Free tier, no trial active |
+| `trial_active` | 7-day trial in progress |
+| `premium_active` | Paid subscription active |
+| `admin_override` | Admin-granted premium access |
+
+### Feature Gates
+
+- `ai_generation` — 3 free uses, then requires premium/trial
+- `grouped_routine_authoring` — No free limit currently set
+
+### Dev Override System
+
+In `__DEV__` mode, `devEntitlementStore` allows testing all entitlement scenarios without real billing. Settings screen exposes scenario picker + mock generation toggle.
 
 ---
 
-## 14. Recommended First Commands
+## 13. Weight Unit System
 
+### Architecture
+
+- **Storage:** All weights stored internally in **kg** (canonical unit)
+- **Preference:** `preferencesStore.weightUnit` persisted in AsyncStorage
+- **Display:** `units.ts` converts kg → display unit on render
+- **Input:** `parseWeightInputToKg(value, unit)` converts user input → kg for storage
+
+### Key Functions (`services/units.ts`)
+
+| Function | Purpose |
+|----------|---------|
+| `convertKgToUnit(kg, unit)` | kg → display unit |
+| `convertUnitToKg(value, unit)` | Display unit → kg |
+| `formatWeightWithUnit(kg, unit)` | "45.0 kg" or "99.2 lb" |
+| `formatVolumeWithUnit(volumeKg, unit)` | Volume display with unit |
+| `parseWeightInputToKg(value, unit)` | Input string → kg number |
+| `getWarmupWeightKg(workingWeightKg)` | 65% of working weight |
+| `getWarmupReps(workingReps)` | 60% of working reps (min 4) |
+
+---
+
+## 14. Grouped Exercise System
+
+### Types
+
+- `WorkoutExerciseGroupType = 'single' | 'superset' | 'triset' | 'giantset'`
+- Exercises share a `groupId` (UUID) and `groupType`
+- `groupOrder` determines display order within group
+
+### Components
+
+- `ExerciseGroupCard.tsx` — Renders grouped exercises as a visual unit
+- `ExerciseCard.tsx` — Individual exercise within a group or standalone
+- `SetRow.tsx` — Individual set within an exercise
+
+### In Routine Builder
+
+Both client and trainer `create-routine.tsx` support:
+- Adding exercises to groups
+- Selecting group type (superset/triset/giantset)
+- Draft persistence via `routineDrafts.ts`
+
+---
+
+## 15. Schedule Resolution System
+
+### Priority Rules (`services/schedule.ts`)
+
+1. **Manual override** — User explicitly selects a routine for a day → highest priority
+2. **Trainer-assigned** — `source: 'trainer'` assignments (priority 2)
+3. **Self/AI-assigned** — `source: 'self'` or `source: 'ai'` (priority 1)
+4. **Tiebreaker** — Most recently assigned wins (`assignedAt` descending)
+
+### Resolution Output
+
+```typescript
+ResolvedDayRoutine {
+  day: DayOfWeek;
+  activeRoutine: WorkoutRoutine | null;
+  activeAssignment: Assignment | null;
+  reason: 'manual_override' | 'coach_assigned' | 'self_scheduled' | 'ai_scheduled' | 'empty';
+  candidates: Assignment[];
+  isManualOverride: boolean;
+}
+```
+
+---
+
+## 16. Build Passes Completed
+
+| Phase | Status | Description |
+|-------|--------|-------------|
+| Phase 1 — Foundation | ✅ | Scaffold, theme, types, UI primitives, auth store, routing, all screens |
+| Phase 2 — Supabase Integration | ✅ | Auth, schema, RLS, profile trigger, service layer |
+| Phase 3 — Workout Engine | ✅ | workoutStore, live session, rest timer, history |
+| Phase 4 — Trainer-Client System | ✅ | assignmentStore, client management, assignments, notifications, dashboard |
+| Phase 5 — Marketplace | ✅ | Discover trainers, search, filter, trainer public profiles |
+| Phase 6 — Programs & Routines | ✅ | Program list, routine detail, create program, assignment |
+| Phase 7 — AI Generation | ✅ | 7A generate UI, 7B review UI, 7C Edge Function + migration (written, not deployed) |
+| Phase 8 — Bug Fixes & Polish | ✅ | Duplicate key fix, interactive day picker, session staleness, filter polish, deploy runbook |
+| App Simplification + Navigation Cleanup | ✅ | Post-Phase 8 hardening pass |
+| Visual Language + Digital Workout Journal | ✅ | Summary hero stats, recap rows, achievements, reflection sheet |
+| Trainer Workflow Maturity | ✅ | Trainer screen improvements (5 files) |
+| Trainer Conversion Loop + Beta Hardening | ✅ | copy.ts centralization, invite alerts, assign alerts, status labels (5 files) |
+| Entitlement & Billing Architecture | ✅ | Adapter pattern, RevenueCat, trial system, feature gates, dev scenarios |
+| Unit Preferences (kg/lb) | ✅ | preferencesStore, units.ts, WeightUnitToggle |
+
+---
+
+## 17. Deployment Status
+
+| Component | Written | Applied/Deployed |
+|-----------|---------|-----------------|
+| Base schema (6 tables + RLS) | ✅ | ✅ Live |
+| Phase 7C migration (marketplace, reviews, invites, RPCs) | ✅ | ❌ NOT applied |
+| Phase 10 migration (entitlements columns) | ✅ | ❌ NOT applied |
+| generate-plan Edge Function | ✅ | ❌ NOT deployed |
+| OPENAI_API_KEY secret | — | ❌ NOT set |
+| RevenueCat API keys | — | ❌ NOT configured |
+| EAS Build | — | ❌ No production build |
+
+### Deploy Runbook
+
+See `docs/deploy-runbook-phase8.md` for step-by-step instructions.
+
+Quick sequence:
+1. Apply Phase 7C migration → `supabase db push` or SQL editor
+2. Apply Phase 10 migration → `supabase db push` or SQL editor
+3. Set secrets → `supabase secrets set OPENAI_API_KEY=...`
+4. Deploy Edge Function → `supabase functions deploy generate-plan`
+5. Set RevenueCat env vars in `.env` (when ready for billing)
+
+---
+
+## 18. Known Issues & Gotchas
+
+### IDE False Positives
+VS Code may show `--jsx` TypeScript errors. These are **false positives**. Always verify:
 ```bash
-# 1. Verify clean compile
-cd /Users/bellomohammed/Dev/experiments/ai-gym-app
-npx tsc --noEmit
-
-# 2. Start dev server
-npx expo start
-
-# 3. Apply pending Phase 7C migration (copy SQL into Supabase Dashboard → SQL Editor)
-# File: supabase/migrations/phase7c_ai_generation.sql
-
-# 4. Create marketplace migration (REQUIRED before marketplace features work)
-# Add to profiles: username, specialties, certifications, intro_video,
-#   experience_years, is_public, rating_avg, rating_count
-# Add RPC: check_username_available, find_user_by_username
-
-# 5. Deploy Edge Function (requires Supabase CLI)
-supabase functions deploy generate-plan
-
-# 6. Set OpenAI secret
-supabase secrets set OPENAI_API_KEY=sk-...
-
-# 7. Update stale docs
-# - AGENTS.md: remove Phase 1 restrictions, document Phase 5-7 reality
-# - TASKS.md: add Phase 5, 6, 6B, 7A, 7B, 7C with checkmarks
-# - docs/architecture.md: add Supabase, Edge Functions, AI generation, marketplace
+npx tsc --noEmit  # Should show 0 errors
 ```
+
+### Entitlement Column Fallback
+`services/entitlements.ts` gracefully handles missing `plan_tier`/`trial_started_at`/etc. columns by falling back to AsyncStorage. This ensures the app works before Phase 10 migration is applied.
+
+### Generation Backend Check
+`services/generation.ts` proactively checks for missing `ai_generation_count` column before calling the Edge Function. Shows a clear "backend not ready" error if migrations aren't applied.
+
+### Mock Generation in Dev
+When `__DEV__` and `devEntitlementStore.mockGenerationEnabled` is true, `generatePlan()` returns a deterministic mock plan instead of calling the Edge Function. This enables offline development.
+
+### Weight Storage Convention
+All weights are stored in **kg** regardless of user preference. Display conversion happens at render time via `units.ts`. Any new weight display must use `formatWeightWithUnit()` or `formatVolumeWithUnit()`.
+
+### Store Hydration Order
+`useSession` hydrates assignmentStore, workoutStore, and entitlementStore in parallel after auth. The `clearUserScope` action on authStore ensures all stores are reset on sign-out to prevent data leaks between users.
 
 ---
 
-## End of Handoff
+## 19. What's Next (Phase 9+)
 
-This document reflects the verified state of the codebase as of the handoff date. Every file path, column name, and status was confirmed by audit. If something in the code contradicts this document, the code is the source of truth — but flag it, because it likely means a bug or drift was introduced after this handoff.
+### Pending Deployment
+- [ ] Apply Phase 7C migration to Supabase
+- [ ] Apply Phase 10 migration to Supabase
+- [ ] Set OPENAI_API_KEY secret
+- [ ] Deploy generate-plan Edge Function
+
+### Deferred Features
+- [ ] Real-device end-to-end testing
+- [ ] Push notifications (expo-notifications)
+- [ ] Analytics & crash reporting
+- [ ] App Store / Play Store submission
+- [ ] RevenueCat production setup (API keys, products, offerings)
+- [ ] Biometric authentication (expo-local-authentication)
+- [ ] OTP verification backend
+- [ ] Social login providers (Google, Apple)
+- [ ] Image/avatar upload (Supabase Storage)
+- [ ] Offline-first with conflict resolution
+- [ ] Performance profiling (large routine lists, workout history)

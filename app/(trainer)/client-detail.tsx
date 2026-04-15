@@ -11,18 +11,25 @@ import { useTrainerClients } from '@/hooks/useTrainerClients';
 import { useAssignmentStore } from '@/store/assignmentStore';
 import { useAuthStore } from '@/store/authStore';
 import { fetchClientPrograms, endorseProgram, type ProgramRow } from '@/services/programs';
+import { TRAINER_LOOP } from '@/config/copy';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
 
 const statusColor: Record<string, string> = {
-  assigned: '#60A5FA',
-  in_progress: '#FACC15',
+  assigned: '#FACC15',
+  in_progress: '#60A5FA',
   completed: colors.accent,
 };
 
 const statusLabel: Record<string, string> = {
-  assigned: 'Assigned',
-  in_progress: 'In Progress',
-  completed: 'Completed',
+  assigned: TRAINER_LOOP.statusAwaitingClient,
+  in_progress: TRAINER_LOOP.statusInProgress,
+  completed: TRAINER_LOOP.statusCompleted,
+};
+
+const statusIcon: Record<string, string> = {
+  assigned: 'time-outline',
+  in_progress: 'fitness-outline',
+  completed: 'checkmark-circle',
 };
 
 export default function ClientDetail() {

@@ -11,6 +11,7 @@ import { supabase } from '@/config/supabase';
 import { linkClient } from '@/services/trainer';
 import { findByUsername, createInvite } from '@/services/marketplace';
 import type { InviteType } from '@/types/marketplace';
+import { TRAINER_LOOP } from '@/config/copy';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
 
 const TABS: { key: InviteType; label: string; icon: string }[] = [
@@ -58,8 +59,15 @@ export default function InviteClient() {
           return;
         }
         await linkClient(trainerId, clientId);
-        Alert.alert('Client Linked', 'They will now appear in your client list.', [
-          { text: 'Done', onPress: () => router.back() },
+        Alert.alert(TRAINER_LOOP.clientLinkedTitle, TRAINER_LOOP.clientLinkedBody, [
+          {
+            text: TRAINER_LOOP.btnAssignWorkout,
+            onPress: () => {
+              router.back();
+              setTimeout(() => router.push({ pathname: '/(trainer)/assign', params: { clientId, clientName: trimmed } }), 100);
+            },
+          },
+          { text: TRAINER_LOOP.btnDone, style: 'cancel', onPress: () => router.back() },
         ]);
       } else if (tab === 'username') {
         const found = await findByUsername(trimmed.replace(/^@/, ''));
@@ -67,9 +75,9 @@ export default function InviteClient() {
           // No existing user — create a pending invite
           await createInvite(trainerId, 'username', trimmed.replace(/^@/, ''));
           Alert.alert(
-            'Invite Created',
-            'A pending invite has been created. When they sign up with this username, they will be auto-linked.',
-            [{ text: 'OK', onPress: () => router.back() }],
+            TRAINER_LOOP.inviteCreatedTitle,
+            TRAINER_LOOP.invitePendingUsername,
+            [{ text: TRAINER_LOOP.btnDone, onPress: () => router.back() }],
           );
           return;
         }
@@ -78,16 +86,23 @@ export default function InviteClient() {
           return;
         }
         await linkClient(trainerId, found.id);
-        Alert.alert('Client Linked', `${found.full_name} has been added.`, [
-          { text: 'Done', onPress: () => router.back() },
+        Alert.alert(TRAINER_LOOP.clientLinkedTitle, TRAINER_LOOP.clientLinkedNameBody(found.full_name), [
+          {
+            text: TRAINER_LOOP.btnAssignWorkout,
+            onPress: () => {
+              router.back();
+              setTimeout(() => router.push({ pathname: '/(trainer)/assign', params: { clientId: found.id, clientName: found.full_name } }), 100);
+            },
+          },
+          { text: TRAINER_LOOP.btnDone, style: 'cancel', onPress: () => router.back() },
         ]);
       } else {
         // Phone — create a pending invite
         await createInvite(trainerId, 'phone', trimmed);
         Alert.alert(
-          'Invite Created',
-          'A pending invite for this phone number has been created.',
-          [{ text: 'OK', onPress: () => router.back() }],
+          TRAINER_LOOP.inviteCreatedTitle,
+          TRAINER_LOOP.invitePendingPhone,
+          [{ text: TRAINER_LOOP.btnDone, onPress: () => router.back() }],
         );
       }
     } catch (e: any) {

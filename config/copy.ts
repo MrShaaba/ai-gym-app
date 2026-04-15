@@ -68,6 +68,42 @@ export const CONFIRM = {
   overrideCleared: 'Manual override cleared for this day.',
 } as const;
 
+/* ── Trainer conversion loop ─────────────────────────────────── */
+
+export const TRAINER_LOOP = {
+  // invite-client.tsx — post-link alerts
+  clientLinkedTitle: 'Client Linked',
+  clientLinkedBody: 'They will now appear in your client list.',
+  clientLinkedNameBody: (name: string) => `${name} has been added to your client list.`,
+  inviteCreatedTitle: 'Invite Created',
+  invitePendingUsername:
+    "A pending invite has been created. When they sign up with this username, they'll be auto-linked. You'll find them in your client list once they join.",
+  invitePendingPhone:
+    "A pending invite for this phone number has been created. You'll find them in your client list once they join.",
+  btnAssignWorkout: 'Assign Workout',
+  btnDone: 'Done',
+
+  // assign.tsx — post-assignment alert
+  assignedTitle: 'Workout Assigned',
+  assignedBody: (routineName: string, clientName: string, days: string) =>
+    `"${routineName}" has been assigned to ${clientName} for ${days}. They'll see it on their workout screen right away.`,
+  btnViewClient: 'View Client',
+
+  // client-detail.tsx — assignment status labels
+  statusAwaitingClient: 'Awaiting Client',
+  statusInProgress: 'In Progress',
+  statusCompleted: 'Completed',
+} as const;
+
+/* ── Client notification card ────────────────────────────────── */
+
+export const CLIENT_NOTIF = {
+  viewWorkout: 'View Workout →',
+  viewSchedule: 'View Schedule →',
+  dismiss: 'Dismiss',
+  moreNotifications: (count: number) => `+${count} more`,
+} as const;
+
 export const DAY_ROUTINE_REASON_LABEL: Record<DayRoutineResolutionReason, string> = {
   manual_override: 'Manual override',
   coach_assigned: 'Coach assigned',
