@@ -11,6 +11,7 @@ import { RestTimer } from '@/components/workout/RestTimer';
 import { ReflectionSheet } from '@/components/workout/ReflectionSheet';
 import { WeightUnitToggle } from '@/components/ui/WeightUnitToggle';
 import { useWorkoutStore } from '@/store/workoutStore';
+import { useAssignmentStore } from '@/store/assignmentStore';
 import { useAuthStore } from '@/store/authStore';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
 import type { ExerciseLog, WorkoutExerciseGroupType, WorkoutReflection } from '@/types/workout';
@@ -119,6 +120,8 @@ export default function WorkoutSession() {
   const pauseWorkout = useWorkoutStore((s) => s.pauseWorkout);
   const resumeWorkout = useWorkoutStore((s) => s.resumeWorkout);
   const restartWorkout = useWorkoutStore((s) => s.restartWorkout);
+  const setActiveSessionAssignmentStatus = useWorkoutStore((s) => s.setActiveSessionAssignmentStatus);
+  const updateAssignmentStatus = useAssignmentStore((s) => s.updateAssignmentStatus);
 
   const [elapsedDisplay, setElapsedDisplay] = useState('0:00');
   const [showReflection, setShowReflection] = useState(false);
@@ -133,6 +136,25 @@ export default function WorkoutSession() {
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, [session]);
+
+  React.useEffect(() => {
+    if (!session?.assignmentId || session.assignmentStatus !== 'assigned') return;
+
+    setActiveSessionAssignmentStatus('in_progress');
+
+    void updateAssignmentStatus(session.assignmentId, 'in_progress').catch((error) => {
+      console.warn('[WorkoutSession] failed to mark assignment in progress', error);
+      Alert.alert(
+        'Assignment Sync Delayed',
+        'The workout started, but we could not update the assignment status right now.',
+      );
+    });
+  }, [
+    session?.assignmentId,
+    session?.assignmentStatus,
+    setActiveSessionAssignmentStatus,
+    updateAssignmentStatus,
+  ]);
 
   const workoutBlocks = useMemo(() => {
     if (!session) return [] as WorkoutBlock[];
@@ -149,12 +171,22 @@ export default function WorkoutSession() {
   }, []);
 
   const handleReflection = useCallback((reflection?: WorkoutReflection) => {
+    const linkedAssignmentId = session?.assignmentId;
     const result = finishWorkout(userId, reflection);
     setShowReflection(false);
     if (result) {
+      if (linkedAssignmentId) {
+        void updateAssignmentStatus(linkedAssignmentId, 'completed').catch((error) => {
+          console.warn('[WorkoutSession] failed to mark assignment completed', error);
+          Alert.alert(
+            'Workout Saved',
+            'Your workout was completed, but the assignment status could not be updated right now.',
+          );
+        });
+      }
       router.replace('/(workout)/summary');
     }
-  }, [finishWorkout, router, userId]);
+  }, [finishWorkout, router, session?.assignmentId, updateAssignmentStatus, userId]);
 
   const handleReflectionSkip = useCallback(() => {
     handleReflection(undefined);
