@@ -127,6 +127,19 @@ export async function updateAssignmentStatusDB(
   if (error) throw error;
 }
 
+export async function deleteTrainerAssignment(
+  trainerId: string,
+  assignmentId: string,
+): Promise<void> {
+  const { error } = await supabase
+    .from('assignments')
+    .delete()
+    .eq('trainer_id', trainerId)
+    .eq('id', assignmentId);
+
+  if (error) throw error;
+}
+
 export async function deleteSelfAssignmentsForRoutine(
   clientId: string,
   routineId: string,

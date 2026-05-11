@@ -11,6 +11,7 @@ import { useTrainerClients } from '@/hooks/useTrainerClients';
 import { useAssignmentStore } from '@/store/assignmentStore';
 import { useAuthStore } from '@/store/authStore';
 import { fetchClientPrograms, endorseProgram, type ProgramRow } from '@/services/programs';
+import { deleteTrainerAssignment } from '@/services/assignments';
 import { TRAINER_LOOP } from '@/config/copy';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
 
@@ -39,6 +40,7 @@ export default function ClientDetail() {
   const { clients, loading } = useTrainerClients(trainerId);
   const client = clients.find((c) => c.clientId === (id ?? ''));
   const allAssignments = useAssignmentStore((s) => s.assignments);
+  const hydrateAssignments = useAssignmentStore((s) => s.hydrate);
   const assignments = useMemo(
     () => allAssignments.filter((a) => a.clientId === (id ?? '')),
     [allAssignments, id],
@@ -47,6 +49,7 @@ export default function ClientDetail() {
   // AI-generated programs for this client
   const [clientPrograms, setClientPrograms] = useState<ProgramRow[]>([]);
   const [endorsing, setEndorsing] = useState<string | null>(null);
+  const [removingAssignmentId, setRemovingAssignmentId] = useState<string | null>(null);
 
   const loadClientPrograms = useCallback(async () => {
     if (!id) {
@@ -109,6 +112,33 @@ export default function ClientDetail() {
     } finally {
       setEndorsing(null);
     }
+  };
+
+  const handleRemoveAssignment = (assignmentId: string, routineName: string) => {
+    if (!trainerId) return;
+
+    Alert.alert(
+      'Remove Assignment',
+      `Remove "${routineName}" from this client's active assignments?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            setRemovingAssignmentId(assignmentId);
+            try {
+              await deleteTrainerAssignment(trainerId, assignmentId);
+              await hydrateAssignments('trainer', trainerId);
+            } catch (e: any) {
+              Alert.alert('Error', e.message ?? 'Failed to remove assignment.');
+            } finally {
+              setRemovingAssignmentId(null);
+            }
+          },
+        },
+      ],
+    );
   };
 
   return (
@@ -244,6 +274,16 @@ export default function ClientDetail() {
                 <Text style={styles.noteText}>{a.note}</Text>
               </View>
             )}
+            <TouchableOpacity
+              style={styles.removeAssignmentBtn}
+              onPress={() => handleRemoveAssignment(a.id, a.routineName)}
+              disabled={removingAssignmentId === a.id}
+            >
+              <Ionicons name="trash-outline" size={14} color={colors.dangerLight} />
+              <Text style={styles.removeAssignmentText}>
+                {removingAssignmentId === a.id ? 'Removing…' : 'Remove Assignment'}
+              </Text>
+            </TouchableOpacity>
           </Card>
         ))}
 
@@ -439,6 +479,21 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     fontStyle: 'italic',
     flex: 1,
+  },
+  removeAssignmentBtn: {
+    marginTop: spacing.md,
+    paddingTop: spacing.sm,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    alignSelf: 'flex-start',
+  },
+  removeAssignmentText: {
+    color: colors.dangerLight,
+    fontSize: fontSize.xs,
+    fontWeight: '600',
   },
   endorseBtn: {
     flexDirection: 'row',
