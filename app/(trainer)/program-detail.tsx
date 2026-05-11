@@ -8,6 +8,9 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { useRoutines } from '@/hooks/useRoutines';
 import { deleteProgram, deleteRoutine } from '@/services/programs';
+import { deleteFutureTrainerAssignmentsForRoutines } from '@/services/assignments';
+import { useAssignmentStore } from '@/store/assignmentStore';
+import { useUserId } from '@/hooks/useUserId';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
 
 const difficultyColor: Record<string, string> = {
@@ -24,7 +27,9 @@ export default function ProgramDetail() {
     daysPerWeek: string;
   }>();
   const router = useRouter();
+  const trainerId = useUserId();
   const { routines, loading, refetch } = useRoutines(id);
+  const hydrateAssignments = useAssignmentStore((s) => s.hydrate);
   const [deleting, setDeleting] = useState(false);
 
   const handleDeleteProgram = () => {
@@ -39,7 +44,16 @@ export default function ProgramDetail() {
           onPress: async () => {
             setDeleting(true);
             try {
+              if (trainerId) {
+                await deleteFutureTrainerAssignmentsForRoutines(
+                  trainerId,
+                  routines.map((routine) => routine.id),
+                );
+              }
               await deleteProgram(id!);
+              if (trainerId) {
+                await hydrateAssignments('trainer', trainerId);
+              }
               router.back();
             } catch (e: any) {
               Alert.alert('Error', e.message ?? 'Failed to delete program.');
@@ -60,7 +74,13 @@ export default function ProgramDetail() {
         style: 'destructive',
         onPress: async () => {
           try {
+            if (trainerId) {
+              await deleteFutureTrainerAssignmentsForRoutines(trainerId, [routineId]);
+            }
             await deleteRoutine(routineId);
+            if (trainerId) {
+              await hydrateAssignments('trainer', trainerId);
+            }
             refetch();
           } catch (e: any) {
             Alert.alert('Error', e.message ?? 'Failed to delete routine.');
@@ -179,7 +199,7 @@ export default function ProgramDetail() {
           icon="trash-outline"
           variant="outline"
           onPress={handleDeleteProgram}
-          disabled={deleting}
+          disabled={deleting || loading}
           style={styles.deleteProgramBtn}
         />
       </ScrollView>

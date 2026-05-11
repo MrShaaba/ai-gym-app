@@ -140,6 +140,23 @@ export async function deleteTrainerAssignment(
   if (error) throw error;
 }
 
+export async function deleteFutureTrainerAssignmentsForRoutines(
+  trainerId: string,
+  routineIds: string[],
+): Promise<void> {
+  const uniqueRoutineIds = Array.from(new Set(routineIds.filter(Boolean)));
+  if (uniqueRoutineIds.length === 0) return;
+
+  const { error } = await supabase
+    .from('assignments')
+    .delete()
+    .eq('trainer_id', trainerId)
+    .eq('status', 'assigned')
+    .in('routine_id', uniqueRoutineIds);
+
+  if (error) throw error;
+}
+
 export async function deleteSelfAssignmentsForRoutine(
   clientId: string,
   routineId: string,
