@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/Input';
 import { useUserId } from '@/hooks/useUserId';
 import { supabase } from '@/config/supabase';
 import { linkClient } from '@/services/trainer';
-import { findByUsername, createInvite } from '@/services/marketplace';
+import { findByUsername } from '@/services/marketplace';
 import type { InviteType } from '@/types/marketplace';
 import { TRAINER_LOOP } from '@/config/copy';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
@@ -44,13 +44,18 @@ export default function InviteClient() {
 
     setBusy(true);
     try {
+      if (tab === 'phone') {
+        setError('Phone invite is not supported in this pass. Use email or username for an existing account.');
+        return;
+      }
+
       if (tab === 'email') {
         // Existing email-based flow via RPC
         const { data, error: rpcErr } = await supabase.rpc('find_user_by_email', {
           lookup_email: trimmed,
         });
         if (rpcErr || !data) {
-          setError('No account found with that email.');
+          setError('No account found with that email. Email invites for non-users are not supported in this pass.');
           return;
         }
         const clientId = data as string;
@@ -72,13 +77,7 @@ export default function InviteClient() {
       } else if (tab === 'username') {
         const found = await findByUsername(trimmed.replace(/^@/, ''));
         if (!found) {
-          // No existing user — create a pending invite
-          await createInvite(trainerId, 'username', trimmed.replace(/^@/, ''));
-          Alert.alert(
-            TRAINER_LOOP.inviteCreatedTitle,
-            TRAINER_LOOP.invitePendingUsername,
-            [{ text: TRAINER_LOOP.btnDone, onPress: () => router.back() }],
-          );
+          setError('No account found with that username. Username invites for non-users are not supported in this pass.');
           return;
         }
         if (found.id === trainerId) {
@@ -96,14 +95,6 @@ export default function InviteClient() {
           },
           { text: TRAINER_LOOP.btnDone, style: 'cancel', onPress: () => router.back() },
         ]);
-      } else {
-        // Phone — create a pending invite
-        await createInvite(trainerId, 'phone', trimmed);
-        Alert.alert(
-          TRAINER_LOOP.inviteCreatedTitle,
-          TRAINER_LOOP.invitePendingPhone,
-          [{ text: TRAINER_LOOP.btnDone, onPress: () => router.back() }],
-        );
       }
     } catch (e: any) {
       if (e?.message?.includes('duplicate') || e?.code === '23505') {
@@ -173,6 +164,7 @@ export default function InviteClient() {
 
         <Card style={styles.card}>
           <Input
+            key={tab}
             label={`Client ${tab.charAt(0).toUpperCase() + tab.slice(1)}`}
             placeholder={placeholder}
             keyboardType={keyboardType}
@@ -183,10 +175,10 @@ export default function InviteClient() {
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
           <Button
-            title={busy ? 'Linking…' : 'Link Client'}
+            title={tab === 'phone' ? 'Phone Invite Not Available' : busy ? 'Linking…' : 'Link Client'}
             icon="link-outline"
             onPress={handleInvite}
-            disabled={busy || !value.trim()}
+            disabled={busy || !value.trim() || tab === 'phone'}
             style={styles.submitBtn}
           />
         </Card>
@@ -195,10 +187,10 @@ export default function InviteClient() {
           <Ionicons name="information-circle-outline" size={18} color={colors.textMuted} />
           <Text style={styles.infoText}>
             {tab === 'email'
-              ? 'Your client must have an existing AI Gym account with this email.'
+              ? 'Use email only for a client who already has an AI Gym account. New-user email invites are not supported in this pass.'
               : tab === 'username'
-                ? 'If the username exists, they\'ll be linked instantly. Otherwise a pending invite is created.'
-                : 'A pending invite will be created for this phone number.'}
+                ? 'Use username only for an existing AI Gym account. New-user username invites are not supported in this pass.'
+                : 'Phone invite is not supported in this pass. Use email or username for an existing AI Gym account.'}
           </Text>
         </Card>
       </View>
