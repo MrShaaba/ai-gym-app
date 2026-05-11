@@ -90,6 +90,8 @@ export interface ActiveSession {
   routineName: string;
   programName?: string;
   source?: WorkoutPlanSource;
+  assignmentId?: string;
+  assignmentStatus?: import('@/types/assignment').AssignmentStatus;
   status?: ActiveSessionStatus;
   startedAt: number;
   elapsedSeconds?: number;

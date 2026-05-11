@@ -16,7 +16,7 @@ import { fetchClientRoutines, routineRowToWorkoutRoutine, type RoutineRow } from
 import { BUTTONS, CLIENT_NOTIF, CONFIRM, DAY_ROUTINE_REASON_LABEL, EMPTY, HELPER } from '@/config/copy';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
 import type { WorkoutPlanSource, WorkoutRoutine } from '@/types/workout';
-import type { DayOfWeek } from '@/types/assignment';
+import type { Assignment, DayOfWeek } from '@/types/assignment';
 
 const DAY_LABELS_SHORT = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const;
 
@@ -91,8 +91,16 @@ export default function Workout() {
     ?? activeDayRoutine?.assignedBy
     ?? activeDayRoutine?.programName;
 
-  const handlePlay = (routine: WorkoutRoutine) => {
-    startWorkout(routine);
+  const handlePlay = (routine: WorkoutRoutine, assignment?: Assignment | null) => {
+    startWorkout(
+      routine,
+      assignment
+        ? {
+            assignmentId: assignment.id,
+            assignmentStatus: assignment.status,
+          }
+        : undefined,
+    );
     router.push('/(workout)/session');
   };
 
@@ -244,7 +252,7 @@ export default function Workout() {
               </View>
               <TouchableOpacity
                 style={styles.playBtn}
-                onPress={() => handlePlay(activeDayRoutine)}
+                onPress={() => handlePlay(activeDayRoutine, activeDayResolution.activeAssignment)}
                 disabled={!!activeSession}
               >
                 <Ionicons name="play" size={20} color={colors.background} />

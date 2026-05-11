@@ -12,7 +12,7 @@ import { useAssignmentStore } from '@/store/assignmentStore';
 import { useWorkoutStore } from '@/store/workoutStore';
 import { useUserId } from '@/hooks/useUserId';
 import { colors, fontSize, spacing, borderRadius } from '@/config/theme';
-import type { DayOfWeek } from '@/types/assignment';
+import type { Assignment, DayOfWeek } from '@/types/assignment';
 import type { WorkoutPlanSource, WorkoutRoutine } from '@/types/workout';
 
 const DAYS: DayOfWeek[] = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -44,8 +44,16 @@ export function ScheduleContent() {
   );
   const activeDayCount = Array.from(dayMap.values()).filter((resolution) => resolution.activeRoutine).length;
 
-  const handleStart = (routine: WorkoutRoutine) => {
-    startWorkout(routine);
+  const handleStart = (routine: WorkoutRoutine, assignment?: Assignment | null) => {
+    startWorkout(
+      routine,
+      assignment
+        ? {
+            assignmentId: assignment.id,
+            assignmentStatus: assignment.status,
+          }
+        : undefined,
+    );
     router.push('/(workout)/session');
   };
 
@@ -113,7 +121,7 @@ export function ScheduleContent() {
                     {isToday && !activeSession && (
                       <TouchableOpacity
                         style={styles.startBtn}
-                        onPress={() => handleStart(item)}
+                        onPress={() => handleStart(item, resolution.activeAssignment)}
                       >
                         <Ionicons name="play" size={18} color={colors.background} />
                       </TouchableOpacity>

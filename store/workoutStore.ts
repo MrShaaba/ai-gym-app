@@ -18,11 +18,18 @@ interface WorkoutState {
   restTimerEnd: number | null;
   reset: () => void;
   hydrateHistory: (userId: string) => Promise<void>;
-  startWorkout: (routine: WorkoutRoutine) => void;
+  startWorkout: (
+    routine: WorkoutRoutine,
+    assignmentContext?: {
+      assignmentId: string;
+      assignmentStatus: ActiveSession['assignmentStatus'];
+    },
+  ) => void;
   cancelWorkout: () => void;
   pauseWorkout: () => void;
   resumeWorkout: () => void;
   restartWorkout: () => void;
+  setActiveSessionAssignmentStatus: (status: NonNullable<ActiveSession['assignmentStatus']>) => void;
   goToExercise: (index: number) => void;
   updateSet: (exerciseIndex: number, setIndex: number, data: Partial<SetLog>) => void;
   toggleSetComplete: (exerciseIndex: number, setIndex: number) => void;
@@ -104,7 +111,7 @@ const createWorkoutState: StateCreator<WorkoutState> = (set, get) => ({
     }
   },
 
-  startWorkout: (routine) => {
+  startWorkout: (routine, assignmentContext) => {
     const now = Date.now();
     set({
       activeSession: {
@@ -112,6 +119,8 @@ const createWorkoutState: StateCreator<WorkoutState> = (set, get) => ({
         routineName: routine.name,
         programName: routine.programName ?? routine.assignedBy,
         source: routine.source ?? 'self',
+        assignmentId: assignmentContext?.assignmentId,
+        assignmentStatus: assignmentContext?.assignmentStatus,
         status: 'running',
         startedAt: now,
         elapsedSeconds: 0,
@@ -156,6 +165,18 @@ const createWorkoutState: StateCreator<WorkoutState> = (set, get) => ({
     });
   },
 
+  setActiveSessionAssignmentStatus: (status) => {
+    const session = get().activeSession;
+    if (!session || !session.assignmentId) return;
+
+    set({
+      activeSession: {
+        ...session,
+        assignmentStatus: status,
+      },
+    });
+  },
+
   restartWorkout: () => {
     const session = get().activeSession;
     const snapshot = session?.routineSnapshot;
@@ -168,6 +189,8 @@ const createWorkoutState: StateCreator<WorkoutState> = (set, get) => ({
         routineName: snapshot.name,
         programName: snapshot.programName ?? snapshot.assignedBy,
         source: snapshot.source ?? 'self',
+        assignmentId: session.assignmentId,
+        assignmentStatus: session.assignmentStatus,
         status: 'running',
         startedAt: now,
         elapsedSeconds: 0,
