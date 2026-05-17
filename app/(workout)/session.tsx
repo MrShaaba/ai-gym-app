@@ -193,8 +193,17 @@ export default function WorkoutSession() {
   }, [handleReflection]);
 
   const handleCancel = useCallback(() => {
+    const linkedAssignmentId = session?.assignmentId;
+    const linkedAssignmentStatus = session?.assignmentStatus;
+    if (linkedAssignmentId && linkedAssignmentStatus === 'in_progress') {
+      setActiveSessionAssignmentStatus('assigned');
+      void updateAssignmentStatus(linkedAssignmentId, 'assigned').catch((error) => {
+        console.warn('[WorkoutSession] failed to roll back assignment on cancel', error);
+      });
+    }
+    cancelWorkout();
     router.replace('/(client)/workout');
-  }, [router]);
+  }, [cancelWorkout, router, session?.assignmentId, session?.assignmentStatus, setActiveSessionAssignmentStatus, updateAssignmentStatus]);
 
   const handlePause = useCallback(() => {
     pauseWorkout();
