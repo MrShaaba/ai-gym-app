@@ -1,59 +1,71 @@
-# AI Gym App
+# AI Gym
 
-AI-powered gym & workout mobile app built with Expo, React Native, and TypeScript.
+A digital workout journal with member and trainer workspaces. This iteration runs entirely on the web, with a local API and persistent disk storage. It requires no Supabase or hosting account.
 
-## Tech Stack
+## Open the web app
 
-- **Expo SDK 54** — managed workflow, cross-platform
-- **React Native 0.81** + **React 19** — new architecture
-- **TypeScript 5.9** — strict mode, path aliases
-- **expo-router 6** — file-based routing
-- **Zustand 5** — minimal auth/role state
-
-## Getting Started
+Use Node 20.19+ and Yarn 4.4.1:
 
 ```bash
-# Install dependencies
-npm install
-
-# Start dev server
-npx expo start
-
-# Run on iOS simulator
-npx expo run:ios
-
-# Run on Android emulator
-npx expo run:android
+corepack enable
+yarn install
+yarn web:build
+yarn web:serve
 ```
 
-## Project Structure
+Open **http://127.0.0.1:8094**. The sign-in screen has demo buttons for both roles:
 
+| Workspace | Email | Password |
+| --- | --- | --- |
+| Member — Alex Morgan | `member@aigym.local` | `TrainToday!2026` |
+| Trainer — Jordan Lee | `trainer@aigym.local` | `TrainToday!2026` |
+
+Register separate local accounts for an empty starting point. Demo accounts contain fictional records. Sessions are scoped to a browser tab, so separate tabs can explore both roles.
+
+For hot reload, run `yarn web:dev` and open http://localhost:8093. This starts the API on 8094 and Expo on 8093; stop an existing `web:serve` process first. Ctrl+C stops both development processes.
+
+## What works locally
+
+- Registration, sign-in/out, profile intake, password changes, account export and deletion.
+- Programs/routines with exercise search, reps, decimal kg/lb loads, timed sets, rest, warmups and groups; editing, copying, reordering, archiving, deletion and draft recovery.
+- Scheduling with routine-to-weekday mappings, dated recurrence, conflict review, rescheduling, skipping and future cancellation.
+- Workout start/pause/resume/restart/cancel, rest timers, reflections, journal editing, coach feedback and progress charts.
+- Durable owner-specific workout drafts and outbox; failed completions remain visible and replay with the same id. Recovery backup download is available.
+- Trainer discovery, consent-based connections, existing-account invitations, client management, adherence, coach notes, feedback and program endorsement.
+- Persistent messages and in-app notifications with cross-tab/polling updates.
+- Editable local-template plan studio, clearly identified as a preview without hosted AI calls.
+
+## Storage and boundaries
+
+The API binds to loopback. It atomically saves `.local-web/data.json`, with hashed passwords and session tokens. Browser drafts, pending completions and cached state have owner-specific keys. These directories are ignored by Git. Keep local data private and back it up before changing storage.
+
+The API enforces role, ownership and active coaching consent independently of the UI. The JSON store supports one local process; it is not a multi-instance hosted database. Server restarts preserve records. Tests use isolated disposable data.
+
+Hosted AI, Supabase, verified email/recovery, payments, push and app-store distribution are **not connected in this iteration**. All local features are available without a purchase. Responsive browser tests do not certify native iOS/Android behavior.
+
+## Verification
+
+```bash
+yarn typecheck
+yarn test:server
+yarn test:member
+yarn web:build
+yarn exec playwright install chromium
+yarn test:web
 ```
-app/
-  (auth)/       # Onboarding, login, register, OTP, biometric
-  (client)/     # Workout, programs, statistics, profile
-  (trainer)/    # Dashboard, clients, programs, profile
-  (shared)/     # Subscription, settings (modal stack)
-components/
-  ui/           # Screen, Button, Card, Input
-  navigation/   # TabBarIcon
-config/         # Theme tokens, constants, feature flags
-store/          # Zustand auth store
-services/       # Secure storage helpers
-types/          # User, workout domain types
-docs/           # PRD, roadmap, architecture
-```
 
-## Navigation
+Browser tests use port 8095 and their own temporary data. Traces/screenshots and the HTML report are generated in ignored directories. See [the test guide](tests/web/README.md) and [verification record](docs/web-verification.md).
 
-- **Root** — Stack navigator routes to auth/client/trainer/shared groups
-- **Auth** — Headerless stack: onboarding → login → register → OTP → biometric
-- **Client** — Bottom tabs: Workout, Programs, Statistics, Profile
-- **Trainer** — Bottom tabs: Dashboard, Clients, Programs, Profile
-- **Shared** — Modal stack: Subscription, Settings
+## Code map
 
-## Phase 1 Scope
+| Path | Purpose |
+| --- | --- |
+| `app/_layout.web.tsx` | Dedicated web entry through Expo Router |
+| `web/` | Typed web UI, API client, responsive CSS and workout recovery |
+| `server/` | Local HTTP API, validation, authorization, durable storage and fixtures |
+| `tests/web/` | Browser journeys and responsive checks |
+| `app/`, `services/`, `store/` | Existing native app and Supabase integration |
 
-This is the Phase 1 MVP foundation — app shell, routing, screen structure, shared UI, mock auth, and role-aware navigation. No real backend, payments, or AI integrations.
+The web UI uses semantic HTML/CSS; native screens retain React Native conventions. The native entry and `App.tsx` remain unchanged.
 
-See [docs/mvp-roadmap.md](docs/mvp-roadmap.md) for the full roadmap.
+Read [the web handoff](docs/web-first-handoff.md) for lifecycle rules and release gates. The earlier [audit](docs/end-to-end-audit-2026-10-13.md) and [roadmap](docs/completion-roadmap-2026-10-13.md) describe the pre-implementation native baseline, not a certification of this web iteration or a native release.
