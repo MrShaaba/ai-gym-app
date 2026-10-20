@@ -1,5 +1,7 @@
 # Tasks
 
+> Historical phase log for the native app. Current plans live in [ROADMAP.md](ROADMAP.md) and GitHub issues.
+
 ## Phase 1 — Foundation ✅
 
 - [x] Project scaffold (Expo SDK 54, TypeScript, path aliases)

@@ -1,6 +1,21 @@
 # AI Gym
 
-A digital workout journal with member and trainer workspaces. This iteration runs entirely on the web, with a local API and persistent disk storage. It requires no Supabase or hosting account.
+A digital workout journal where a personal trainer can prescribe, monitor and adjust a member's training plan, and the member can follow it, log every set and see their progress without losing work.
+
+It's for independent trainers who coach a small group of clients and want something more structured than spreadsheets and chat threads, and for members who train on their own and want a reliable plan and journal. I started it in April 2026 because I train regularly and wanted a coaching loop I could actually trust: an Expo/React Native app first, then this web-first iteration that runs fully on one machine.
+
+![Member workspace](docs/web-preview/member.png)
+
+## Built with
+
+- **Expo SDK 54, React Native 0.81, React 19, TypeScript** with Expo Router (native app plus a dedicated web entry)
+- **Node.js local API** (`server/`) with validation, role/ownership authorization and atomic JSON storage
+- **Supabase** (Postgres, Auth, row-level security, Edge Functions) for the hosted native path, Zustand for client state
+- **Playwright** for browser journeys, `node --test` for API and domain tests, Prettier
+
+## Status
+
+The web iteration runs locally with no Supabase or hosting account: member and trainer workspaces, scheduling, durable workout logging, coaching feedback, messages and progress. Hosted AI plan generation, payments, push notifications and app-store builds are not connected yet. What comes next is in [ROADMAP.md](ROADMAP.md) and the open GitHub issues.
 
 ## Open the web app
 
@@ -69,3 +84,11 @@ Browser tests use port 8095 and their own temporary data. Traces/screenshots and
 The web UI uses semantic HTML/CSS; native screens retain React Native conventions. The native entry and `App.tsx` remain unchanged.
 
 Read [the web handoff](docs/web-first-handoff.md) for lifecycle rules and release gates. The earlier [audit](docs/end-to-end-audit-2026-10-13.md) and [roadmap](docs/completion-roadmap-2026-10-13.md) describe the pre-implementation native baseline, not a certification of this web iteration or a native release.
+
+## Roadmap
+
+See [ROADMAP.md](ROADMAP.md). In short: harden the account and data foundation, make schedules and offline workouts fully reliable, close the trainer/member coaching loop across devices, add bounded AI plan suggestions that a trainer approves, then ship native builds.
+
+## License
+
+[MIT](LICENSE) © 2026 Bello Mohammed
