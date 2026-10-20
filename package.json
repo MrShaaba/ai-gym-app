@@ -7,7 +7,17 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "node scripts/web-dev.mjs",
+    "web:dev": "node scripts/web-dev.mjs",
+    "web:api": "node server/index.mjs",
+    "web:build": "expo export --platform web --output-dir web-dist",
+    "web:serve": "node server/index.mjs",
+    "typecheck": "tsc --noEmit",
+    "test:server": "node --test server/tests/*.test.mjs",
+    "test:member": "node --test web/member/session.test.mjs",
+    "test:web": "playwright test",
+    "format:web": "prettier --write web server tests/web scripts app/_layout.web.tsx config/supabase.web.ts services/billing/RevenueCatBillingAdapter.web.ts babel.config.js playwright.config.ts",
+    "format:web:check": "prettier --check web server tests/web scripts app/_layout.web.tsx config/supabase.web.ts services/billing/RevenueCatBillingAdapter.web.ts babel.config.js playwright.config.ts"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
@@ -39,8 +49,10 @@
   },
   "devDependencies": {
     "@babel/core": "^7.29.0",
+    "@playwright/test": "^1.64.0",
     "@types/babel__core": "^7",
     "@types/react": "~19.1.0",
+    "prettier": "^3.9.10",
     "typescript": "~5.9.2"
   },
   "private": true,

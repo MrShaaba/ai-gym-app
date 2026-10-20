@@ -47,3 +47,10 @@ dist/
 
 # Supabase local temp
 supabase/.temp/
+
+# Web workspace data, builds and test artifacts
+.local-web/
+.local-web-test/
+web-dist/
+playwright-report/
+test-results/

@@ -1,0 +1,328 @@
+.trainer-page {
+  min-width: 0;
+}
+.trainer-wrap {
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.trainer-person {
+  min-width: 0;
+  gap: 12px;
+}
+.trainer-person > div {
+  min-width: 0;
+}
+.trainer-person strong,
+.trainer-person p {
+  overflow-wrap: anywhere;
+}
+.trainer-person p {
+  margin: 4px 0 0;
+}
+.trainer-block {
+  display: block;
+  margin-top: 5px;
+}
+.trainer-preserve {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.trainer-capitalize {
+  text-transform: capitalize;
+}
+.trainer-metric-caption {
+  margin-top: -4px;
+  line-height: 1.7;
+}
+.trainer-dashboard-grid {
+  align-items: start;
+}
+.trainer-queue-row,
+.trainer-workout-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  text-align: left;
+  border: 1px solid #29342e;
+  border-radius: 14px;
+  padding: 16px;
+  color: inherit;
+  background: #121a16;
+  cursor: pointer;
+  font: inherit;
+  transition:
+    border-color 150ms ease,
+    background 150ms ease;
+}
+.trainer-queue-row:hover,
+.trainer-workout-row:hover {
+  border-color: #6a8655;
+  background: #182219;
+}
+.trainer-queue-row:focus-visible,
+.trainer-workout-row:focus-visible {
+  outline: 2px solid #c3f47b;
+  outline-offset: 3px;
+}
+.trainer-queue-row > span:first-child,
+.trainer-workout-row > span:first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.trainer-reflection-preview {
+  max-width: 42ch;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  opacity: 0.85;
+}
+.trainer-open-label {
+  color: #c3f47b;
+  font-size: 12px;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.trainer-pending {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 4px 0;
+}
+.trainer-pending + .trainer-pending {
+  border-top: 1px solid #29342e;
+  padding-top: 20px;
+}
+.trainer-pending p {
+  margin: 0;
+}
+.trainer-roster-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.trainer-tabs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.trainer-search {
+  flex: 0 1 290px;
+}
+.trainer-roster-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+.trainer-member-card {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.trainer-member-card > .actions {
+  margin-top: auto;
+}
+.trainer-goal {
+  font-size: 15px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: 0;
+}
+.trainer-mini-stats {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr;
+  gap: 12px;
+  padding: 18px 0;
+  margin: 0;
+  border-top: 1px solid #29342e;
+  border-bottom: 1px solid #29342e;
+}
+.trainer-mini-stats dt {
+  color: #9faea4;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.trainer-mini-stats dd {
+  font-size: 24px;
+  font-weight: 600;
+  margin: 7px 0 0;
+}
+.trainer-note-block,
+.trainer-disclosure {
+  padding: 16px 18px;
+  border-radius: 12px;
+  background: #1b261d;
+  border: 1px solid #33462e;
+  line-height: 1.7;
+}
+.trainer-note-block p {
+  margin: 8px 0 0;
+}
+.trainer-note-block h4 {
+  margin: 0;
+}
+.trainer-intake {
+  border: 1px solid #29342e;
+  border-radius: 16px;
+  padding: 20px;
+}
+.trainer-intake h3 {
+  margin: 0 0 16px;
+}
+.trainer-intake dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px 28px;
+  margin: 0;
+}
+.trainer-intake dt {
+  color: #9faea4;
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+.trainer-intake dd {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.trainer-intake dl > div:first-child,
+.trainer-intake dl > div:last-child {
+  grid-column: 1 / -1;
+}
+.trainer-assignment,
+.trainer-session {
+  border: 1px solid #29342e;
+  border-radius: 14px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.trainer-assignment h4,
+.trainer-session h4 {
+  margin: 0;
+}
+.trainer-assignment p,
+.trainer-session p {
+  margin: 5px 0 0;
+}
+.trainer-mapping {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.trainer-mapping li {
+  display: flex;
+  gap: 16px;
+  align-items: baseline;
+  font-size: 13px;
+}
+.trainer-mapping li > span {
+  width: 90px;
+  flex-shrink: 0;
+  color: #9faea4;
+}
+.trainer-mapping strong {
+  overflow-wrap: anywhere;
+  font-weight: 500;
+}
+.trainer-reschedule {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: end;
+}
+.trainer-reschedule .field {
+  flex: 1;
+  min-width: 160px;
+}
+.trainer-reschedule .actions {
+  padding-bottom: 2px;
+}
+.trainer-workout-detail h3,
+.trainer-workout-detail h4 {
+  margin: 0;
+}
+.trainer-exercise h4 {
+  margin: 0 0 12px;
+}
+.trainer-table {
+  width: 100%;
+  border-collapse: collapse;
+  white-space: nowrap;
+  font-size: 13px;
+}
+.trainer-table th,
+.trainer-table td {
+  text-align: left;
+  padding: 12px 10px;
+  border-bottom: 1px solid #29342e;
+}
+.trainer-table thead th {
+  color: #9faea4;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.trainer-table tbody th {
+  font-weight: 500;
+}
+.trainer-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+@media (max-width: 850px) {
+  .trainer-roster-grid {
+    grid-template-columns: 1fr;
+  }
+  .trainer-search {
+    flex-basis: 100%;
+  }
+}
+@media (max-width: 520px) {
+  .trainer-intake dl {
+    grid-template-columns: 1fr;
+  }
+  .trainer-queue-row,
+  .trainer-workout-row {
+    gap: 10px;
+    padding: 13px;
+  }
+  .trainer-queue-row > .badge,
+  .trainer-workout-row > .badge {
+    max-width: 100px;
+  }
+  .trainer-reflection-preview {
+    max-width: 24ch;
+  }
+  .trainer-open-label {
+    font-size: 11px;
+  }
+  .trainer-intake,
+  .trainer-assignment,
+  .trainer-session {
+    padding: 16px;
+  }
+  .trainer-mini-stats {
+    gap: 8px;
+  }
+  .trainer-mini-stats dd {
+    font-size: 21px;
+  }
+}
